@@ -72,7 +72,7 @@ LOCAL_SRC_FILES := \
     bionic/pthread_cond.cpp
 LOCAL_SHARED_LIBRARIES := libc
 LOCAL_MODULE := libmocha_libc
-LOCAL_CLANG := false
+# 8.1 removed LOCAL_CLANG (clang is mandatory); this shim builds fine with it
 LOCAL_CXX_STL := none
 LOCAL_SANITIZE := never
 LOCAL_MODULE_TAGS := optional
