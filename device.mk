@@ -20,8 +20,8 @@ TARGET_SCREEN_HEIGHT := 2048
 TARGET_SCREEN_WIDTH := 1536
 TARGET_TEGRA_VERSION := t124
 
+# 8.1 removed the separate hwui-memory makefiles; dalvik-heap covers the rest
 $(call inherit-product, frameworks/native/build/phone-xxhdpi-2048-dalvik-heap.mk)
-$(call inherit-product, frameworks/native/build/phone-xxhdpi-2048-hwui-memory.mk)
 
 
 $(call inherit-product-if-exists, vendor/xiaomi/mocha/mocha-vendor.mk)
