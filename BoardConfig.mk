@@ -42,7 +42,7 @@ TARGET_KERNEL_SOURCE := kernel/xiaomi/mocha
 TARGET_KERNEL_CONFIG := mocha_user_defconfig
 # This kernel only boots with the linaro 4.9.4 toolchain
 TARGET_KERNEL_CROSS_COMPILE_PREFIX := arm-linux-gnueabihf-
-KERNEL_TOOLCHAIN := prebuilts/gcc/linux-x86/arm/gcc-linaro-4.9.4-2017.01
+KERNEL_TOOLCHAIN := prebuilts/gcc/linux-x86/arm/gcc-linaro-4.9.4-2017.01/bin
 BOARD_KERNEL_IMAGE_NAME := zImage
 BOARD_MKBOOTIMG_ARGS := --ramdisk_offset $(BOARD_RAMDISK_OFFSET) --tags_offset $(BOARD_KERNEL_TAGS_OFFSET)
 BOARD_CUSTOM_BOOTIMG_MK := device/xiaomi/mocha/mkbootimg.mk
