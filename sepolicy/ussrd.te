@@ -1,0 +1,14 @@
+# mocha-specific policy for ussrd (USB/system server resource daemon)
+
+type ussrd, domain;
+type ussrd_exec, exec_type, file_type;
+
+init_daemon_domain(ussrd)
+
+# Read sysfs cpufreq / cpuquiet nodes it publishes
+r_dir_file(ussrd, sysfs_devices_system_cpu)
+allow ussrd sysfs:dir search;
+allow ussrd sysfs:file rw_file_perms;
+allow ussrd debugfs_clock:dir search;
+allow ussrd debugfs_clock:file w_file_perms;
+allow ussrd self:capability { dac_override sys_admin };

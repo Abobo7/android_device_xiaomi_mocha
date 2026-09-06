@@ -1,0 +1,35 @@
+# mocha-specific policy for nvcgcserver, tegrastats, nv_hciattach,
+# btmacwriter and hdcp_test (NVIDIA vendor helpers)
+
+type nvcgcserver, domain;
+type nvcgcserver_exec, exec_type, file_type;
+init_daemon_domain(nvcgcserver)
+allow nvcgcserver self:capability { dac_override };
+r_dir_file(nvcgcserver, sysfs_soc)
+
+type tegrastats, domain;
+type tegrastats_exec, exec_type, file_type;
+init_daemon_domain(tegrastats)
+r_dir_file(tegrastats, sysfs)
+allow tegrastats sysfs:file rw_file_perms;
+
+type nv_hciattach, domain;
+type nv_hciattach_exec, exec_type, file_type;
+init_daemon_domain(nv_hciattach)
+allow nv_hciattach hci_attach_dev:chr_file rw_file_perms;
+allow nv_hciattach self:capability { net_admin net_bind_service };
+allow nv_hciattach bluetooth_efs_file:file rw_file_perms;
+
+type btmacwriter, domain;
+type btmacwriter_exec, exec_type, file_type;
+init_daemon_domain(btmacwriter)
+allow btmacwriter hci_attach_dev:chr_file rw_file_perms;
+allow btmacwriter factory_file:file rw_file_perms;
+allow btmacwriter factory_file:dir rw_dir_perms;
+allow btmacwriter self:capability dac_override;
+
+type hdcp_test, domain;
+type hdcp_test_exec, exec_type, file_type;
+init_daemon_domain(hdcp_test)
+allow hdcp_test self:capability dac_override;
+allow hdcp_test gpu_device:chr_file rw_file_perms;

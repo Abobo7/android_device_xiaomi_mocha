@@ -1,0 +1,13 @@
+# mocha-specific policy for brcm-uim-sysfs (BT/FM/ANT+ UIM daemon)
+
+type uim, domain;
+type uim_exec, exec_type, file_type;
+
+init_daemon_domain(uim)
+
+# Talk to the BCM UART via /dev/ttyTHS2
+allow uim hci_attach_dev:chr_file rw_file_perms;
+allow uim self:capability { dac_override };
+
+# Parse /sys firmware nodes for the HCI attach state
+r_dir_file(uim, sysfs)
