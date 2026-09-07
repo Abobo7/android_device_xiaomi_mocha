@@ -10,5 +10,3 @@ allow touch_fusion input_device:chr_file rw_file_perms;
 allow touch_fusion tty_device:chr_file rw_file_perms;
 allow touch_fusion sysfs:file rw_file_perms;
 allow touch_fusion sysfs:dir search;
-allow touch_fusion touchscreen_data_file:dir rw_dir_perms;
-allow touch_fusion touchscreen_data_file:file create_file_perms;
