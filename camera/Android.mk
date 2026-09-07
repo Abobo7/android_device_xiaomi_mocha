@@ -14,7 +14,8 @@ LOCAL_C_INCLUDES += \
     system/media/camera/include \
     frameworks/native/libs/nativebase/include \
     frameworks/native/libs/arect/include \
-    system/libhidl/transport/token/1.0/utils/include \n    system/libhidl/base/include
+    system/libhidl/transport/token/1.0/utils/include \
+    system/libhidl/base/include
 
 LOCAL_32_BIT_ONLY := true
 #LOCAL_MODULE_PATH := $(TARGET_OUT_SHARED_LIBRARIES)/hw
