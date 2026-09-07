@@ -32,7 +32,7 @@ TARGET_NO_BOOTLOADER := true
 TARGET_NO_RADIOIMAGE := true
 
 # Kernel
-BOARD_KERNEL_CMDLINE := androidboot.hardware=tn8
+BOARD_KERNEL_CMDLINE := androidboot.selinux=permissive androidboot.hardware=tn8
 BOARD_KERNEL_BASE := 0x10000000
 BOARD_RAMDISK_OFFSET := 0x02000000
 BOARD_KERNEL_PAGESIZE := 2048
