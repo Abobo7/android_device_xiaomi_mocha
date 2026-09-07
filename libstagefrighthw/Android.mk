@@ -30,7 +30,8 @@ LOCAL_SHARED_LIBRARIES :=       \
         libbinder               \
         libutils                \
         libcutils               \
-        libdl                   \
+        libdl  \
+        liblog                   \
         libui                   \
 
 LOCAL_MODULE := libstagefrighthw
