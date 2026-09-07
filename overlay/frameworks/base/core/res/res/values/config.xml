@@ -153,7 +153,6 @@
     <bool name="config_unplugTurnsOnScreen">true</bool>
 
     <!-- Enable electronBeam animation instead of fading off. -->
-    <bool name="config_animateScreenLights">false</bool>
 
     <!-- Boolean indicating whether the wifi chipset supports background scanning mechanism.
          This mechanism allows the host to remain in suspend state and the dongle to actively
