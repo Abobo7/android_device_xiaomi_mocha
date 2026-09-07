@@ -20,13 +20,8 @@ allow nv_hciattach hci_attach_dev:chr_file rw_file_perms;
 allow nv_hciattach self:capability { net_admin net_bind_service };
 allow nv_hciattach bluetooth_efs_file:file rw_file_perms;
 
-type btmacwriter, domain;
-type btmacwriter_exec, exec_type, file_type;
-init_daemon_domain(btmacwriter)
-allow btmacwriter hci_attach_dev:chr_file rw_file_perms;
-allow btmacwriter factory_file:file rw_file_perms;
-allow btmacwriter factory_file:dir rw_dir_perms;
-allow btmacwriter self:capability dac_override;
+# btmacwriter: blob ships in vendor but no mocha init rc starts it;
+# dropped the domain (8.1 neverallows its factory_file writes anyway).
 
 type hdcp_test, domain;
 type hdcp_test_exec, exec_type, file_type;
