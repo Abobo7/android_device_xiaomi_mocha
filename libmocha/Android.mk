@@ -38,6 +38,7 @@ LOCAL_SHARED_LIBRARIES := \
         libhardware \
         libui \
         libgui \
+        libsensor \
         libcamera_metadata
 
 LOCAL_C_INCLUDES += \
