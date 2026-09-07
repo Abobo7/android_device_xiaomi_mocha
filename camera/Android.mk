@@ -10,6 +10,7 @@ LOCAL_SHARED_LIBRARIES := \
 
 LOCAL_C_INCLUDES += \
     system/core/include \
+    system/core/base/include \
     system/media/camera/include
 
 LOCAL_32_BIT_ONLY := true
