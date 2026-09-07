@@ -399,9 +399,7 @@
 # HAL services
 #
 
-/(vendor|system/vendor)/bin/hw/vendor\.nvidia\.hardware\.power@1\.0-service	u:object_r:hal_power_tegra_exec:s0
 
-/(vendor|system/vendor)/bin/hw/vendor\.nvidia\.hardware\.keymaster@3\.0-service	u:object_r:hal_keymaster_tegra_exec:s0
 
 
 #############################
@@ -435,9 +433,6 @@
 /vendor/bin/nv_hciattach		u:object_r:nv_hciattach_exec:s0
 (/system)?/vendor/bin/nv_hciattach	u:object_r:nv_hciattach_exec:s0
 
-# btmacwriter
-/vendor/bin/btmacwriter			u:object_r:btmacwriter_exec:s0
-(/system)?/vendor/bin/btmacwriter	u:object_r:btmacwriter_exec:s0
 
 # hdcp_test
 /vendor/bin/hdcp_test			u:object_r:hdcp_test_exec:s0
