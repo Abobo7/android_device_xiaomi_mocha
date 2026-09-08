@@ -1,0 +1,181 @@
+diff --git a/libs/ui/GraphicBuffer.cpp b/libs/ui/GraphicBuffer.cpp
+--- a/libs/ui/GraphicBuffer.cpp
++++ b/libs/ui/GraphicBuffer.cpp
+@@ -28,6 +28,10 @@
+ 
+ namespace android {
+ 
++#if defined(__arm__) && !defined(__LP64__)
++static_assert(sizeof(GraphicBuffer) == 120, "Stock Tegra GraphicBuffer allocation ABI");
++#endif
++
+ // ===========================================================================
+ // Buffer and implementation of ANativeWindowBuffer
+ // ===========================================================================
+@@ -45,7 +49,7 @@
+ 
+ GraphicBuffer::GraphicBuffer()
+     : BASE(), mOwner(ownData), mBufferMapper(GraphicBufferMapper::get()),
+-      mInitCheck(NO_ERROR), mId(getUniqueId()), mGenerationNumber(0)
++      mInitCheck(NO_ERROR), mBufferState(new BufferState(getUniqueId()))
+ {
+     width  =
+     height =
+@@ -82,6 +86,24 @@
+ {
+ }
+ 
++GraphicBuffer::GraphicBuffer(uint32_t inWidth, uint32_t inHeight,
++        PixelFormat inFormat, uint32_t inUsage, uint32_t inStride,
++        native_handle_t* inHandle, bool keepOwnership)
++    : GraphicBuffer(inWidth, inHeight, inFormat, 1, inUsage, inStride,
++            inHandle, keepOwnership)
++{
++}
++
++GraphicBuffer::GraphicBuffer(ANativeWindowBuffer* buffer, bool keepOwnership)
++    : GraphicBuffer(buffer->handle, keepOwnership ? TAKE_HANDLE : WRAP_HANDLE,
++            static_cast<uint32_t>(buffer->width), static_cast<uint32_t>(buffer->height),
++            buffer->format, 1,
++            static_cast<uint64_t>(static_cast<uint32_t>(buffer->usage_deprecated)),
++            static_cast<uint32_t>(buffer->stride))
++{
++    mBufferState->wrappedBuffer = buffer;
++}
++
+ GraphicBuffer::GraphicBuffer(const native_handle_t* handle,
+         HandleWrapMethod method, uint32_t width, uint32_t height,
+         PixelFormat format, uint32_t layerCount,
+@@ -109,6 +131,7 @@
+         allocator.free(handle);
+     }
+     handle = NULL;
++    mBufferState->wrappedBuffer.clear();
+ }
+ 
+ status_t GraphicBuffer::initCheck() const {
+@@ -167,7 +190,7 @@
+     GraphicBufferAllocator& allocator = GraphicBufferAllocator::get();
+     uint32_t outStride = 0;
+     status_t err = allocator.allocate(inWidth, inHeight, inFormat, inLayerCount,
+-            inUsage, &handle, &outStride, mId,
++            inUsage, &handle, &outStride, mBufferState->id,
+             std::move(requestorName));
+     if (err == NO_ERROR) {
+         width = static_cast<int>(inWidth);
+@@ -345,9 +368,9 @@
+     buf[4] = format;
+     buf[5] = static_cast<int32_t>(layerCount);
+     buf[6] = int(usage); // low 32-bits
+-    buf[7] = static_cast<int32_t>(mId >> 32);
+-    buf[8] = static_cast<int32_t>(mId & 0xFFFFFFFFull);
+-    buf[9] = static_cast<int32_t>(mGenerationNumber);
++    buf[7] = static_cast<int32_t>(mBufferState->id >> 32);
++    buf[8] = static_cast<int32_t>(mBufferState->id & 0xFFFFFFFFull);
++    buf[9] = static_cast<int32_t>(mBufferState->generationNumber);
+     buf[10] = 0;
+     buf[11] = 0;
+     buf[12] = int(usage >> 32); // high 32-bits
+@@ -452,10 +475,10 @@
+         handle = NULL;
+     }
+ 
+-    mId = static_cast<uint64_t>(buf[7]) << 32;
+-    mId |= static_cast<uint32_t>(buf[8]);
+-
+-    mGenerationNumber = static_cast<uint32_t>(buf[9]);
++    mBufferState->id = static_cast<uint64_t>(buf[7]) << 32;
++    mBufferState->id |= static_cast<uint32_t>(buf[8]);
++
++    mBufferState->generationNumber = static_cast<uint32_t>(buf[9]);
+ 
+     mOwner = ownHandle;
+ 
+diff --git a/libs/ui/include/ui/GraphicBuffer.h b/libs/ui/include/ui/GraphicBuffer.h
+--- a/libs/ui/include/ui/GraphicBuffer.h
++++ b/libs/ui/include/ui/GraphicBuffer.h
+@@ -20,6 +20,7 @@
+ #include <stdint.h>
+ #include <sys/types.h>
+ 
++#include <memory>
+ #include <string>
+ 
+ #include <ui/ANativeObjectBase.h>
+@@ -135,6 +136,12 @@
+     GraphicBuffer(uint32_t inWidth, uint32_t inHeight, PixelFormat inFormat,
+             uint32_t inUsage, std::string requestorName = "<Unknown>");
+ 
++    // Pre-layer-count ABI used by the stock Tegra HWC and OMX libraries.
++    GraphicBuffer(uint32_t inWidth, uint32_t inHeight, PixelFormat inFormat,
++            uint32_t inUsage, uint32_t inStride,
++            native_handle_t* inHandle, bool keepOwnership);
++    GraphicBuffer(ANativeWindowBuffer* buffer, bool keepOwnership);
++
+     // return status
+     status_t initCheck() const;
+ 
+@@ -145,11 +152,11 @@
+     PixelFormat getPixelFormat() const  { return format; }
+     uint32_t getLayerCount() const      { return static_cast<uint32_t>(layerCount); }
+     Rect getBounds() const              { return Rect(width, height); }
+-    uint64_t getId() const              { return mId; }
+-
+-    uint32_t getGenerationNumber() const { return mGenerationNumber; }
++    uint64_t getId() const              { return mBufferState->id; }
++
++    uint32_t getGenerationNumber() const { return mBufferState->generationNumber; }
+     void setGenerationNumber(uint32_t generation) {
+-        mGenerationNumber = generation;
++        mBufferState->generationNumber = generation;
+     }
+ 
+     // This function is privileged.  It requires access to the allocator
+@@ -230,12 +237,21 @@
+     GraphicBufferMapper& mBufferMapper;
+     ssize_t mInitCheck;
+ 
+-    uint64_t mId;
+-
+-    // Stores the generation number of this buffer. If this number does not
+-    // match the BufferQueue's internal generation number (set through
+-    // IGBP::setGenerationNumber), attempts to attach the buffer will fail.
+-    uint32_t mGenerationNumber;
++    // Stock 32-bit Tegra libraries allocate only 120 bytes for GraphicBuffer.
++    // Keep the post-KitKat metadata out of line so legacy construction cannot
++    // overwrite the caller's allocation. The native buffer layout is unchanged.
++    struct BufferState {
++        explicit BufferState(uint64_t bufferId)
++            : id(bufferId), generationNumber(0) {}
++
++        // Keep a wrapped native buffer alive until its wrapper is released.
++        sp<ANativeWindowBuffer> wrappedBuffer;
++        uint64_t id;
++
++        // Must match BufferQueue's generation when attaching this buffer.
++        uint32_t generationNumber;
++    };
++    std::unique_ptr<BufferState> mBufferState;
+ };
+ 
+ }; // namespace android
+diff --git a/libs/gui/Surface.cpp b/libs/gui/Surface.cpp
+--- a/libs/gui/Surface.cpp
++++ b/libs/gui/Surface.cpp
+@@ -1281,13 +1281,13 @@
+     }
+ 
+     sp<GraphicBuffer> graphicBuffer(static_cast<GraphicBuffer*>(buffer));
+-    uint32_t priorGeneration = graphicBuffer->mGenerationNumber;
+-    graphicBuffer->mGenerationNumber = mGenerationNumber;
++    uint32_t priorGeneration = graphicBuffer->getGenerationNumber();
++    graphicBuffer->setGenerationNumber(mGenerationNumber);
+     int32_t attachedSlot = -1;
+     status_t result = mGraphicBufferProducer->attachBuffer(&attachedSlot, graphicBuffer);
+     if (result != NO_ERROR) {
+         ALOGE("attachBuffer: IGraphicBufferProducer call failed (%d)", result);
+-        graphicBuffer->mGenerationNumber = priorGeneration;
++        graphicBuffer->setGenerationNumber(priorGeneration);
+         return result;
+     }
+     if (mReportRemovedBuffers && (mSlots[attachedSlot].buffer != nullptr)) {

@@ -1,0 +1,16 @@
+diff --git a/core/java/android/os/GraphicsEnvironment.java b/core/java/android/os/GraphicsEnvironment.java
+--- a/core/java/android/os/GraphicsEnvironment.java
++++ b/core/java/android/os/GraphicsEnvironment.java
+@@ -103,6 +103,12 @@ public class GraphicsEnvironment {
+      * @hide
+      */
+     public static void earlyInitEGL() {
++        // Some legacy drivers invalidate their display when the thread that
++        // obtained it exits. Let these devices initialize on the render thread.
++        if (SystemProperties.getBoolean("ro.egl.disable_early_init", false)) {
++            return;
++        }
++
+         Thread eglInitThread = new Thread(
+                 () -> {
+                     EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY);

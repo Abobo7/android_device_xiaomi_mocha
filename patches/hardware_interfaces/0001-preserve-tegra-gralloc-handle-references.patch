@@ -1,0 +1,63 @@
+diff --git a/graphics/mapper/2.0/default/Gralloc0Mapper.cpp b/graphics/mapper/2.0/default/Gralloc0Mapper.cpp
+--- a/graphics/mapper/2.0/default/Gralloc0Mapper.cpp
++++ b/graphics/mapper/2.0/default/Gralloc0Mapper.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include "Gralloc0Mapper.h"
+ 
++#include <dlfcn.h>
+ #include <log/log.h>
+ 
+ namespace android {
+@@ -31,7 +32,14 @@
+       mMinor(module->module_api_version & 0xff) {
+     mCapabilities.highUsageBits = false;
+     mCapabilities.layeredBuffers = false;
+-    mCapabilities.unregisterImplyDelete = false;
++    // Stock Tegra HWC retains handles with registerBuffer. Its free entry
++    // marks deletion pending and lets the last unregister close/free them.
++    // native_handle_close/delete here would invalidate HWC's live reference.
++    if (module->dso) {
++        mNvGrFreeInternal = reinterpret_cast<NvGrFreeInternal>(
++            dlsym(module->dso, "NvGrFreeInternal"));
++    }
++    mCapabilities.unregisterImplyDelete = mNvGrFreeInternal != nullptr;
+ }
+ 
+ Error Gralloc0Mapper::registerBuffer(buffer_handle_t bufferHandle) {
+@@ -40,7 +48,11 @@
+ }
+ 
+ void Gralloc0Mapper::unregisterBuffer(buffer_handle_t bufferHandle) {
+-    mModule->unregisterBuffer(mModule, bufferHandle);
++    if (mNvGrFreeInternal) {
++        mNvGrFreeInternal(mModule, bufferHandle);
++    } else {
++        mModule->unregisterBuffer(mModule, bufferHandle);
++    }
+ }
+ 
+ Error Gralloc0Mapper::lockBuffer(buffer_handle_t bufferHandle,
+diff --git a/graphics/mapper/2.0/default/Gralloc0Mapper.h b/graphics/mapper/2.0/default/Gralloc0Mapper.h
+--- a/graphics/mapper/2.0/default/Gralloc0Mapper.h
++++ b/graphics/mapper/2.0/default/Gralloc0Mapper.h
+@@ -44,6 +44,8 @@
+ 
+     const gralloc_module_t* mModule;
+     uint8_t mMinor;
++    using NvGrFreeInternal = int (*)(const gralloc_module_t*, buffer_handle_t);
++    NvGrFreeInternal mNvGrFreeInternal = nullptr;
+ };
+ 
+ }  // namespace implementation
+diff --git a/graphics/mapper/2.0/default/Android.bp b/graphics/mapper/2.0/default/Android.bp
+--- a/graphics/mapper/2.0/default/Android.bp
++++ b/graphics/mapper/2.0/default/Android.bp
+@@ -24,6 +24,7 @@
+         "android.hardware.graphics.mapper@2.0",
+         "libbase",
+         "libcutils",
++        "libdl",
+         "libhardware",
+         "libhidlbase",
+         "libhidltransport",

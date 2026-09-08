@@ -44,6 +44,7 @@ TARGET_KERNEL_CONFIG := mocha_user_defconfig
 TARGET_KERNEL_CROSS_COMPILE_PREFIX := arm-linux-gnueabihf-
 KERNEL_TOOLCHAIN := $(ANDROID_BUILD_TOP)/prebuilts/gcc/linux-x86/arm/gcc-linaro-4.9.4-2017.01/bin
 BOARD_KERNEL_IMAGE_NAME := zImage
+BOARD_KERNEL_SEPARATED_DT := true
 BOARD_MKBOOTIMG_ARGS := --ramdisk_offset $(BOARD_RAMDISK_OFFSET) --tags_offset $(BOARD_KERNEL_TAGS_OFFSET)
 BOARD_CUSTOM_BOOTIMG_MK := device/xiaomi/mocha/mkbootimg.mk
 
@@ -77,6 +78,7 @@ BOARD_HAVE_BCM_FM := true
 # Graphics
 USE_OPENGL_RENDERER := true
 BOARD_DISABLE_TRIPLE_BUFFERED_DISPLAY_SURFACES := true
+DEVICE_MANIFEST_FILE := device/xiaomi/mocha/manifest.xml
 
 #Camera
 TARGET_HAS_LEGACY_CAMERA_HAL1 := true
@@ -91,7 +93,9 @@ BOARD_HARDWARE_CLASS := \
 # Legacy shims (moved from system.prop LD_SHIM_LIBS)
 TARGET_LD_SHIM_LIBS := \
     /system/vendor/lib/libnvomxadaptor.so|libmocha_omx.so \
-    /system/lib/hw/camera.vendor.tegra.so|libmocha_camera.so:/system/lib/hw/camera.vendor.tegra.so|libmocha_libc.so
+    /system/lib/hw/camera.vendor.tegra.so|libmocha_camera.so \
+    /system/lib/hw/camera.vendor.tegra.so|libmocha_libc.so \
+    /system/lib/libcutils.so|libmocha_atomic.so
 
 # Offmode Charging
 BOARD_CHARGER_DISABLE_INIT_BLANK := true
@@ -111,6 +115,7 @@ MAX_EGL_CACHE_ENTRY_SIZE := 262144
 TARGET_RECOVERY_DEVICE_DIRS += device/xiaomi/mocha
 TARGET_RECOVERY_FSTAB := device/xiaomi/mocha/rootdir/etc/fstab.tn8
 BOARD_NO_SECURE_DISCARD := true
+TARGET_RELEASETOOLS_EXTENSIONS := device/xiaomi/mocha
 
 # Wifi related defines
 BOARD_WPA_SUPPLICANT_DRIVER      := NL80211

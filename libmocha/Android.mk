@@ -3,6 +3,21 @@ include $(call all-makefiles-under,$(LOCAL_PATH))
 LOCAL_PATH:= $(call my-dir)
 
 include $(CLEAR_VARS)
+LOCAL_SRC_FILES := atomic.c
+LOCAL_MODULE := libmocha_atomic
+LOCAL_MODULE_TAGS := optional
+LOCAL_SHARED_LIBRARIES := libc
+include $(BUILD_SHARED_LIBRARY)
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := mocha_graphicbuffer_abi_test
+LOCAL_SRC_FILES := tests/graphicbuffer_abi.cpp
+LOCAL_SHARED_LIBRARIES := libui libutils libhardware
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_PATH := $(TARGET_OUT_DATA_NATIVE_TESTS)/mocha_graphicbuffer_abi_test
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
 
 include $(CLEAR_VARS)
 

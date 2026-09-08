@@ -9,21 +9,20 @@
 on boot
     # UART device
     chmod 0660 /dev/ttyHS2
-    chown bluetooth net_bt_stack /dev/ttyHS2
+    chown bluetooth bluetooth /dev/ttyHS2
     chmod 0660 /dev/ttyTHS2
-    chown bluetooth net_bt_stack /dev/ttyTHS2
+    chown bluetooth bluetooth /dev/ttyTHS2
 
     # power up/down interface
     chmod 0660 /sys/class/rfkill/rfkill0/state
     chmod 0660 /sys/class/rfkill/rfkill0/type
     write /sys/class/rfkill/rfkill0/state 0
-    chown bluetooth net_bt_stack /sys/class/rfkill/rfkill0/state
-    chown bluetooth net_bt_stack /sys/class/rfkill/rfkill0/type
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/state
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/type
 
     # bluetooth MAC address programming
-    chown bluetooth net_bt_stack ro.bt.bdaddr_path
-    chown bluetooth net_bt_stack /system/etc/bluetooth
-    chown bluetooth net_bt_stack /mnt/factory/bluetooth/bt_mac.txt
+    chown bluetooth bluetooth /system/etc/bluetooth
+    chown bluetooth bluetooth /mnt/factory/bluetooth/bt_mac.txt
     setprop ro.bt.bdaddr_path "/mnt/factory/bluetooth/bt_mac.txt"
 
 
@@ -32,6 +31,8 @@ on post-fs-data
     mkdir /data/misc/wifi/sockets 0770 wifi wifi
     mkdir /data/misc/wifi/firmware 0770 wifi system
     setprop wifi.supplicant wpa_suppl_nl
+    # Wifi support rx-filter
+    setprop wifi.rx-filter 1
 
 service wpa_supplicant /system/bin/wpa_supplicant \
     -iwlan0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf \
@@ -59,6 +60,3 @@ service dns_masq /system/bin/dnsmasq --no-daemon --no-resolv --no-poll --dhcp-op
     group dhcp wifi system
     disabled
     oneshot
-
-# Wifi support rx-filter
-    setprop wifi.rx-filter 1

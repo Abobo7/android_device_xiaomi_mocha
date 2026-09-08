@@ -95,7 +95,17 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/audio/audio_policy.conf:system/etc/audio_policy.conf \
     $(LOCAL_PATH)/audio/audio.mocha.xml:system/etc/audio.mocha.xml
 
+# Android 8.1 wrappers for the stock gralloc0 module. Mapper is passthrough;
+# buffer allocations are served over hwbinder by the allocator service.
 PRODUCT_PACKAGES += \
+    android.hardware.graphics.mapper@2.0-impl \
+    android.hardware.graphics.allocator@2.0-impl \
+    android.hardware.graphics.allocator@2.0-service
+
+PRODUCT_PACKAGES += \
+    android.hardware.audio@2.0-impl \
+    android.hardware.audio@2.0-service \
+    android.hardware.audio.effect@2.0-impl \
     audio.a2dp.default \
     audio.usb.default \
     audio.r_submix.default \
@@ -118,7 +128,14 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/bluetooth/bt_vendor.conf:system/etc/bluetooth/bt_vendor.conf
 
 PRODUCT_PACKAGES += \
+    android.hardware.bluetooth@1.0-impl \
+    android.hardware.bluetooth@1.0-service \
     libbt-vendor
+
+# The keymaster 3.0 wrapper loads the stock keystore.tegra legacy HAL.
+PRODUCT_PACKAGES += \
+    android.hardware.keymaster@3.0-impl \
+    android.hardware.keymaster@3.0-service
 
 # FM
 PRODUCT_PACKAGES += \
@@ -156,12 +173,25 @@ PRODUCT_PACKAGES += \
 # Missing symbols lib
 
 PRODUCT_PACKAGES += \
+    libmocha_atomic \
     libmocha_camera \
     libmocha_omx \
     libpowerservice_client \
     libmocha_libc
 
 PRODUCT_CHARACTERISTICS := tablet
+
+# Keep authenticated ADB available during first boot of development builds.
+# Define USB defaults in one property file so build.prop cannot override them.
+ifneq ($(filter eng userdebug,$(TARGET_BUILD_VARIANT)),)
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += persist.sys.usb.config=mtp,adb
+# Use the standard logcatd service; it starts only after /data is mounted.
+PRODUCT_PROPERTY_OVERRIDES += \
+    logd.logpersistd=logcatd \
+    logd.logpersistd.size=8
+else
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += persist.sys.usb.config=mtp
+endif
 
 # Filesystem management tools
 PRODUCT_PACKAGES += \
