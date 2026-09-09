@@ -47,7 +47,9 @@ on post-fs-data
     # Set SELinux security contexts on upgrade or policy update.
     restorecon_recursive /mnt/usercalib
 
-    mkdir /data/nvcam 0700 media camera
+    # The camera HAL runs in the Oreo provider under cameraserver, not mediaserver.
+    # Stock NvCameraIspDumpFactoryToFile requires this private writable cache.
+    mkdir /data/nvcam 0700 cameraserver camera
 
     mkdir /data/misc/wminput 0776 system system
 

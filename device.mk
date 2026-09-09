@@ -149,6 +149,8 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/camera/model_frontal.xml:system/etc/model_frontal.xml
 
 PRODUCT_PACKAGES += \
+    android.hardware.camera.provider@2.4-impl \
+    android.hardware.camera.provider@2.4-service \
     camera.tegra \
     Snap
 
@@ -166,9 +168,16 @@ PRODUCT_PACKAGES += \
     wpa_supplicant \
     wpa_supplicant.conf
 
-# Light
-#PRODUCT_PACKAGES += \
-#    lights.tegra
+# Android 8.1 bridges to the existing legacy light and power modules.
+PRODUCT_PACKAGES += \
+    android.hardware.light@2.0-impl \
+    android.hardware.light@2.0-service
+
+# Bridge the existing timed_output vibrator HAL to Oreo's framework service.
+PRODUCT_PACKAGES += \
+    vibrator.default \
+    android.hardware.vibrator@1.0-impl \
+    android.hardware.vibrator@1.0-service
 
 # Missing symbols lib
 
@@ -205,10 +214,15 @@ PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/android.software.sip.voip.xml:system/etc/permissions/android.software.sip.voip.xml
 
 # Power
-PRODUCT_PACKAGES += power.tegra
+PRODUCT_PACKAGES += \
+    android.hardware.power@1.0-impl \
+    android.hardware.power@1.0-service \
+    power.tegra
 
 # Sensors
 PRODUCT_PACKAGES += \
+    android.hardware.sensors@1.0-impl \
+    android.hardware.sensors@1.0-service \
     sensors.tegra
 
 # Multi HAL configuration file

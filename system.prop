@@ -39,3 +39,6 @@ ro.radio.noril=yes
 # We are using old omx blobs
 media.stagefright.less-secure=true
 media.stagefright.legacyencoder=true
+
+# Stock camera orientation uses framework SensorManager over /dev/binder.
+ro.camera.legacy_system_binder=true

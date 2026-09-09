@@ -80,8 +80,9 @@ USE_OPENGL_RENDERER := true
 BOARD_DISABLE_TRIPLE_BUFFERED_DISPLAY_SURFACES := true
 DEVICE_MANIFEST_FILE := device/xiaomi/mocha/manifest.xml
 
-#Camera
-TARGET_HAS_LEGACY_CAMERA_HAL1 := true
+# The stock device is HAL3. Keep cameraserver separate from mediaserver: a
+# provider initialization failure must not block media playback or the UI.
+TARGET_HAS_LEGACY_CAMERA_HAL1 := false
 TARGET_NEEDS_PLATFORM_TEXT_RELOCATIONS := true
 
 # CMHW

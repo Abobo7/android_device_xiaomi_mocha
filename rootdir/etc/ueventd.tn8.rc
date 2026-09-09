@@ -1,6 +1,8 @@
 /dev/tegra-throughput	0666	system	system
 /dev/nvmap      0666    system  system
-/dev/tegra_avpchannel   0660    media   media
+# JPEG and video encoders now run in camera/codec services (camera group).
+# Keep the legacy mediaserver owner while allowing those split services.
+/dev/tegra_avpchannel   0660    media   camera
 /dev/tegra_audio_avpchannel	0660	media	media
 /dev/ov2710     0660    media   camera
 /dev/imx091     0660    media   camera

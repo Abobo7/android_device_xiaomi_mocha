@@ -1,0 +1,25 @@
+--- a/camera/provider/2.4/default/service.cpp
++++ b/camera/provider/2.4/default/service.cpp
+@@ -20,6 +20,8 @@
+ #include <hidl/LegacySupport.h>
+ 
+ #include <binder/ProcessState.h>
++#include <string.h>
++#include <sys/system_properties.h>
+ 
+ using android::hardware::camera::provider::V2_4::ICameraProvider;
+ using android::hardware::defaultPassthroughServiceImplementation;
+@@ -29,6 +31,12 @@
+     ALOGI("Camera provider Service is starting.");
+     // The camera HAL may communicate to other vendor components via
+     // /dev/vndbinder
+-    android::ProcessState::initWithDriver("/dev/vndbinder");
++    // Pre-Treble camera blobs may use SensorManager to contact the framework
++    // sensorservice. That service lives on /dev/binder, not /dev/vndbinder.
++    // Keep vendor Binder as the default for devices without this legacy ABI.
++    char legacyBinder[PROP_VALUE_MAX] = {};
++    __system_property_get("ro.camera.legacy_system_binder", legacyBinder);
++    const char* driver = strcmp(legacyBinder, "true") == 0 ? "/dev/binder" : "/dev/vndbinder";
++    android::ProcessState::initWithDriver(driver);
+     return defaultPassthroughServiceImplementation<ICameraProvider>("legacy/0", /*maxThreads*/ 6);
+ }

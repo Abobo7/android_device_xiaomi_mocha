@@ -3,10 +3,11 @@ include $(CLEAR_VARS)
 
 LOCAL_SRC_FILES := \
     Camera3Wrapper.cpp \
-    CameraWrapper.cpp
+    CameraWrapper.cpp \
+    LegacyMetadata.cpp
 
 LOCAL_SHARED_LIBRARIES := \
-    libhardware liblog libcamera_client libutils libcutils libcamera_metadata \
+    libhardware liblog libdl libcamera_client libutils libcutils libcamera_metadata \
     android.hardware.graphics.bufferqueue@1.0
 
 LOCAL_C_INCLUDES += \
