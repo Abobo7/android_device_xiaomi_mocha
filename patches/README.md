@@ -43,6 +43,31 @@ while the vendor release path kept them valid through pixel readback and
 closed them after the final unregister. The regular native test now exercises
 this lifetime through the actual framework mapper.
 
+The EglManager patch works around two legacy Tegra EGL driver behaviors that
+soft-reboot the device. Root cause measured on hardware (2026-09-09): when an
+app launches, its snapshot starting window makes system_server initialize
+hwui EGL; a later TRIM_MEMORY_COMPLETE (memory pressure) runs
+EglManager::destroy(), whose eglTerminate() permanently invalidates the
+default display on this driver; the next task-snapshot persistence readback
+(Bitmap.copy of a hardware snapshot) then re-initializes EGL and
+eglChooseConfig fails with EGL_BAD_DISPLAY, hitting LOG_ALWAYS_FATAL in
+loadConfigs() and killing system_server. This reproduced within one minute
+of boot by opening and back-exiting any app (camera, browser) while cached
+apps were being killed. The same createSurface abort also killed SystemUI
+when opening Recents under memory pressure: nvwsi (the Tegra EGL window
+wrapper) fails dequeueBuffer with ENOMEM and reports EGL_BAD_NATIVE_WINDOW,
+which crashed the SystemUI RenderThread in a loop and bounced the user to
+the lockscreen. Mocha enables two opt-in properties:
+ro.egl.keep_display_initialized skips eglTerminate/eglReleaseThread in
+EglManager::destroy() (the context and pbuffer surface are still destroyed,
+which is what frees GPU memory, and re-initialization then succeeds);
+ro.egl.nonfatal_init converts the loadConfigs()/createSurface() aborts into
+logged errors so a transient failure skips one snapshot persistence or one
+recents attempt instead of killing the process (a single reopen recovers,
+verified on hardware). TaskSnapshotPersister also treats a
+failed hardware readback as a skipped snapshot. Other devices keep the
+upstream fatal behavior.
+
 Tested baselines: frameworks/native `c6d109f4e3cdb41d6a6601b825c420e2731af59a`,
 frameworks/base `39c4a924c7ed9f6093c0983de947734151e4bc7e`,
 hardware/interfaces `5f14a29297db529a6f82527d8444af8ff0f65476`.

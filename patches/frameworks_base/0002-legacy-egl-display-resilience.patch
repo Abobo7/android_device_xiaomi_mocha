@@ -1,0 +1,114 @@
+diff --git a/libs/hwui/renderthread/EglManager.cpp b/libs/hwui/renderthread/EglManager.cpp
+index 16d77364..86473b82 100644
+--- a/libs/hwui/renderthread/EglManager.cpp
++++ b/libs/hwui/renderthread/EglManager.cpp
+@@ -34,6 +34,20 @@
+ #include <GrContextOptions.h>
+ #include <gl/GrGLInterface.h>
+ 
++// Legacy EGL driver compatibility (see device/xiaomi/mocha/patches/README.md).
++// Some EGL implementations permanently invalidate the default display after
++// eglTerminate(), so hwui must tolerate re-initialization failures instead of
++// aborting system_server. Both behaviors are opt-in per device via properties.
++static bool eglKeepDisplayInitialized() {
++    static bool value = property_get_bool("ro.egl.keep_display_initialized", false);
++    return value;
++}
++
++static bool eglNonfatalInit() {
++    static bool value = property_get_bool("ro.egl.nonfatal_init", false);
++    return value;
++}
++
+ #ifdef HWUI_GLES_WRAP_ENABLED
+ #include "debug/GlesDriver.h"
+ #endif
+@@ -122,6 +136,11 @@ void EglManager::initialize() {
+     }
+ 
+     loadConfigs();
++    if (mEglDisplay == EGL_NO_DISPLAY) {
++        // loadConfigs() failed on a legacy driver; leave the manager
++        // uninitialized so a later initialize() can retry.
++        return;
++    }
+     createContext();
+     createPBufferSurface();
+     makeCurrent(mPBufferSurface);
+@@ -199,6 +218,14 @@ void EglManager::loadConfigs() {
+             mSwapBehavior = SwapBehavior::Discard;
+             loadConfigs();
+             return; // the call to loadConfigs() we just made picks the wide gamut config
++        } else if (eglNonfatalInit()) {
++            // Legacy driver: config enumeration can fail transiently (for
++            // example after an eglTerminate triggered by a memory trim).
++            // Stay uninitialized; the next initialize() call retries.
++            ALOGE("Failed to choose config, error = %s (non-fatal, will retry)",
++                    eglErrorString());
++            mEglDisplay = EGL_NO_DISPLAY;
++            return;
+         } else {
+             // Failed to get a valid config
+             LOG_ALWAYS_FATAL("Failed to choose config, error = %s", eglErrorString());
+@@ -223,6 +250,12 @@ void EglManager::loadConfigs() {
+         numConfigs = 1;
+         if (!eglChooseConfig(mEglDisplay, attribs16F, &mEglConfigWideGamut, numConfigs, &numConfigs)
+                 || numConfigs != 1) {
++            if (eglNonfatalInit()) {
++                ALOGE("Cannot find wide gamut config, error = %s (non-fatal, will retry)",
++                        eglErrorString());
++                mEglDisplay = EGL_NO_DISPLAY;
++                return;
++            }
+             LOG_ALWAYS_FATAL(
+                     "Device claims wide gamut support, cannot find matching config, error = %s",
+                     eglErrorString());
+@@ -304,6 +337,13 @@ EGLSurface EglManager::createSurface(EGLNativeWindowType window, bool wideColorG
+ 
+     EGLSurface surface = eglCreateWindowSurface(mEglDisplay,
+             wideColorGamut ? mEglConfigWideGamut : mEglConfig, window, attribs);
++    if (surface == EGL_NO_SURFACE && eglNonfatalInit()) {
++        // Legacy driver: surface creation can fail transiently. Report
++        // no-surface so the pipeline skips rendering instead of aborting.
++        ALOGE("Failed to create EGLSurface for window %p, eglErr = %s (non-fatal)",
++                (void*) window, eglErrorString());
++        return EGL_NO_SURFACE;
++    }
+     LOG_ALWAYS_FATAL_IF(surface == EGL_NO_SURFACE,
+             "Failed to create EGLSurface for window %p, eglErr = %s",
+             (void*) window, eglErrorString());
+@@ -334,8 +374,15 @@ void EglManager::destroy() {
+     eglDestroyContext(mEglDisplay, mEglContext);
+     eglDestroySurface(mEglDisplay, mPBufferSurface);
+     eglMakeCurrent(mEglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+-    eglTerminate(mEglDisplay);
+-    eglReleaseThread();
++    if (eglKeepDisplayInitialized()) {
++        // Legacy driver: eglTerminate() permanently breaks the default display
++        // (a later eglChooseConfig fails with EGL_BAD_DISPLAY and aborts the
++        // process). Keep the display initialized; the context and pbuffer
++        // surface destroyed above are what release the GPU memory.
++    } else {
++        eglTerminate(mEglDisplay);
++        eglReleaseThread();
++    }
+ 
+     mEglDisplay = EGL_NO_DISPLAY;
+     mEglContext = EGL_NO_CONTEXT;
+diff --git a/services/core/java/com/android/server/wm/TaskSnapshotPersister.java b/services/core/java/com/android/server/wm/TaskSnapshotPersister.java
+index 7b047a80..003bba42 100644
+--- a/services/core/java/com/android/server/wm/TaskSnapshotPersister.java
++++ b/services/core/java/com/android/server/wm/TaskSnapshotPersister.java
+@@ -340,6 +340,12 @@ class TaskSnapshotPersister {
+             }
+ 
+             final Bitmap swBitmap = bitmap.copy(Config.ARGB_8888, false /* isMutable */);
++            if (swBitmap == null) {
++                // Hardware readback can fail transiently on legacy EGL drivers;
++                // skip persisting this snapshot instead of crashing.
++                Slog.e(TAG, "Failed to copy task snapshot to a software bitmap");
++                return false;
++            }
+             final File reducedFile = getReducedResolutionBitmapFile(mTaskId, mUserId);
+             final Bitmap reduced = mSnapshot.isReducedResolution()
+                     ? swBitmap
