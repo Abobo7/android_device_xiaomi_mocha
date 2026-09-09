@@ -12,13 +12,9 @@ ro.input.noresample=1
 ro.zygote.disable_gl_preload=true
 # Stock EGL loses its display when the temporary early-init thread exits.
 ro.egl.disable_early_init=true
-# Stock EGL permanently invalidates the default display in eglTerminate(), so
-# a later hwui re-initialization (task snapshot readback after a memory trim)
-# fails with EGL_BAD_DISPLAY and aborts system_server. Keep the display
-# initialized across hwui trims and make init/surface failures non-fatal.
-# See patches/frameworks_base/0002-legacy-egl-display-resilience.patch.
-ro.egl.keep_display_initialized=true
-ro.egl.nonfatal_init=true
+# Stock EGL cannot rebuild after eglTerminate + eglReleaseThread.
+# Keep thread state across hwui trims; release display/context/surface normally.
+ro.egl.skip_release_thread=true
 pbc.enabled=0
 pbc.log=0
 pbc.board_power_threshold=20000

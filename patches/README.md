@@ -43,30 +43,28 @@ while the vendor release path kept them valid through pixel readback and
 closed them after the final unregister. The regular native test now exercises
 this lifetime through the actual framework mapper.
 
-The EglManager patch works around two legacy Tegra EGL driver behaviors that
-soft-reboot the device. Root cause measured on hardware (2026-09-09): when an
-app launches, its snapshot starting window makes system_server initialize
-hwui EGL; a later TRIM_MEMORY_COMPLETE (memory pressure) runs
-EglManager::destroy(), whose eglTerminate() permanently invalidates the
-default display on this driver; the next task-snapshot persistence readback
-(Bitmap.copy of a hardware snapshot) then re-initializes EGL and
-eglChooseConfig fails with EGL_BAD_DISPLAY, hitting LOG_ALWAYS_FATAL in
-loadConfigs() and killing system_server. This reproduced within one minute
-of boot by opening and back-exiting any app (camera, browser) while cached
-apps were being killed. The same createSurface abort also killed SystemUI
-when opening Recents under memory pressure: nvwsi (the Tegra EGL window
-wrapper) fails dequeueBuffer with ENOMEM and reports EGL_BAD_NATIVE_WINDOW,
-which crashed the SystemUI RenderThread in a loop and bounced the user to
-the lockscreen. Mocha enables two opt-in properties:
-ro.egl.keep_display_initialized skips eglTerminate/eglReleaseThread in
-EglManager::destroy() (the context and pbuffer surface are still destroyed,
-which is what frees GPU memory, and re-initialization then succeeds);
-ro.egl.nonfatal_init converts the loadConfigs()/createSurface() aborts into
-logged errors so a transient failure skips one snapshot persistence or one
-recents attempt instead of killing the process (a single reopen recovers,
-verified on hardware). TaskSnapshotPersister also treats a
-failed hardware readback as a skipped snapshot. Other devices keep the
-upstream fatal behavior.
+The EglManager patch preserves thread state across hwui memory trims on
+mocha, via the default-off ro.egl.skip_release_thread property. Independent
+on-device tests created an ES2 context/pbuffer, rendered and read pixels,
+then destroyed/unbound the context and surface before rebuilding. Keeping
+both EGL states, calling only eglTerminate, or calling only eglReleaseThread
+all passed. Only eglTerminate followed by eglReleaseThread made the next
+eglChooseConfig fail with EGL_BAD_DISPLAY (even though eglInitialize returned
+success). The patch skips only eglReleaseThread; display, context and pbuffer
+cleanup still runs. This replaces OTA-17's unnecessarily broad display retention
+and incomplete nonfatal initialization/surface branches. All upstream EGL
+failure contracts remain intact. TaskSnapshotPersister retains a null check for
+a failed hardware bitmap copy, which is already a supported return value.
+Actual application trim/readback and cold-boot tests must accompany the probe.
+
+The separate Recents allocation failure was a kernel Binder lifetime bug:
+a temporary thread first opened hwbinder, exited, then a living thread could
+no longer receive FD-array replies. The old binder_proc held the dead opener
+instead of the process leader for files/mm. GraphicBuffer mapped this transport
+failure to NO_RESOURCES/ENOMEM, even with ample free memory. See the kernel
+Documentation/android/binder-thread-lifetime.txt and the three on-device
+main/alive-worker/exited-worker comparisons. Adding memory or swallowing EGL
+errors does not correct the failed IPC.
 
 Tested baselines: frameworks/native `c6d109f4e3cdb41d6a6601b825c420e2731af59a`,
 frameworks/base `39c4a924c7ed9f6093c0983de947734151e4bc7e`,
