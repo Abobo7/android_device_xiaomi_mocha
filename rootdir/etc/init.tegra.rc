@@ -147,8 +147,8 @@ on boot
 
     chown system system /sys/class/sensors/light/device/amb_clear
 
-# Touch
-    chown system system /sys/class/input/input0/enabled
+# Light sensor input enable (the stock HAL opens /sys/class/input/input0/enable)
+    chown system input /sys/class/input/input0/enable
 
 # nvdps
     chown system system /sys/devices/platform/host1x/tegradc.0/nvdps

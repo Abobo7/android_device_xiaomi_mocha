@@ -66,6 +66,7 @@
 /dev/quadd	0660	shell	shell
 /dev/quadd_auth	0660	system	system
 /sys/devices/virtual/input/input*	enabled	0660	system	system
+/sys/devices/virtual/input/input*	enable	0660	system	input
 /dev/gps	0664	system	system
 /sys/power/sysedp/consumers/icemdm state 0660 radio system
 /dev/hidraw*    0660    system  system
