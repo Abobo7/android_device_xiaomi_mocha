@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <pthread.h>
 #include <cutils/log.h>
+#include <string.h>
 
 #include "SensorEventQueue.h"
 
@@ -26,6 +27,7 @@ SensorEventQueue::SensorEventQueue(int capacity) {
 
     mStart = 0;
     mSize = 0;
+    mPendingSize = 0;
     mData = new sensors_event_t[mCapacity];
     pthread_cond_init(&mSpaceAvailableCondition, NULL);
 }
@@ -62,8 +64,27 @@ void SensorEventQueue::markAsWritten(int count) {
     mSize += count;
 }
 
+void SensorEventQueue::write(const sensors_event_t* events, int count,
+        pthread_mutex_t* mutex, pthread_cond_t* dataAvailable) {
+    mPendingSize = count;
+    while (mPendingSize > 0) {
+        waitForSpace(mutex);
+        sensors_event_t* destination;
+        int chunk = getWritableRegion(mPendingSize, &destination);
+        memcpy(destination, events, chunk * sizeof(*events));
+        markAsWritten(chunk);
+        events += chunk;
+        mPendingSize -= chunk;
+        pthread_cond_broadcast(dataAvailable);
+    }
+}
+
 int SensorEventQueue::getSize() {
     return mSize;
+}
+
+int SensorEventQueue::getPendingSize() {
+    return mSize + mPendingSize;
 }
 
 sensors_event_t* SensorEventQueue::peek() {

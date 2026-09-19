@@ -112,6 +112,14 @@ bool buildCharacteristics(const camera_metadata_t* stock, CameraMetadata* output
     ok &= put(&m, ANDROID_NOISE_REDUCTION_AVAILABLE_NOISE_REDUCTION_MODES, noiseModes);
     ok &= scalar<uint8_t>(&m, ANDROID_HOT_PIXEL_AVAILABLE_HOT_PIXEL_MODES, ANDROID_HOT_PIXEL_MODE_OFF);
     ok &= scalar<uint8_t>(&m, ANDROID_TONEMAP_AVAILABLE_TONE_MAP_MODES, ANDROID_TONEMAP_MODE_FAST);
+    // The stock IMU-based video stabilization node needs sensor timestamps
+    // that this ROM cannot provide (NvIMUBasedVStabCalcTransforms: requested
+    // timestamp does not exist). When it runs it stalls the VI/ISP pipeline
+    // after the first frame and no output buffers are returned, so advertise
+    // OFF only. Camera1 then reports video-stabilization-supported=false and
+    // applications do not enable it.
+    ok &= scalar<uint8_t>(&m, ANDROID_CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES,
+                          ANDROID_CONTROL_VIDEO_STABILIZATION_MODE_OFF);
 
     // This is an old {width,height,fps} triple, not the HAL3.2 four-element
     // configuration. Do not let CameraModule iterate past its end.
@@ -178,6 +186,12 @@ bool normalizeRequest(CameraMetadata* request, const camera_metadata_t* characte
                                           &modes) || modes.count < 2) return false;
         ok &= request->update(ANDROID_CONTROL_AE_TARGET_FPS_RANGE, modes.data.i32, 2) == 0;
     }
+    // Never let the stock VStab node run: see buildCharacteristics().
+    auto stabilization = request->find(ANDROID_CONTROL_VIDEO_STABILIZATION_MODE);
+    if (stabilization.count != 1 ||
+            stabilization.data.u8[0] != ANDROID_CONTROL_VIDEO_STABILIZATION_MODE_OFF)
+        ok &= scalar<uint8_t>(request, ANDROID_CONTROL_VIDEO_STABILIZATION_MODE,
+                              ANDROID_CONTROL_VIDEO_STABILIZATION_MODE_OFF);
     return ok;
 }
 

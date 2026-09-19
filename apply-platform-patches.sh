@@ -22,3 +22,4 @@ apply_project_patches() {
 apply_project_patches "$source_root/frameworks/native" frameworks_native
 apply_project_patches "$source_root/frameworks/base" frameworks_base
 apply_project_patches "$source_root/hardware/interfaces" hardware_interfaces
+apply_project_patches "$source_root/packages/apps/Snap" packages_apps_Snap

@@ -34,6 +34,7 @@
 #include <string>
 
 #include <stdio.h>
+#include <string.h>
 #include <dlfcn.h>
 #include <SensorEventQueue.h>
 
@@ -50,7 +51,8 @@ static pthread_mutex_t init_sensors_mutex = PTHREAD_MUTEX_INITIALIZER;
 // This mutex is shared by all queues
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// Used to pause the multihal poll(). Broadcasted by sub-polling tasks if waiting_for_data.
+// Used to pause multihal poll(). Writers signal after publishing each chunk;
+// software flush requests also signal when a completion may be ready.
 static pthread_cond_t data_available_cond = PTHREAD_COND_INITIALIZER;
 bool waiting_for_data = false;
 
@@ -143,14 +145,16 @@ void *writerTask(void* ptr) {
     TaskContext* ctx = (TaskContext*)ptr;
     sensors_poll_device_t* device = ctx->device;
     SensorEventQueue* queue = ctx->queue;
-    sensors_event_t* buffer;
+    // The stock HAL can emit an accelerometer/gyro pair even when count is
+    // one. Never let it write directly into a short ring-buffer tail.
+    sensors_event_t buffer[SENSOR_EVENT_QUEUE_CAPACITY];
+    const int bufferSize = SENSOR_EVENT_QUEUE_CAPACITY;
     int eventsPolled;
     while (1) {
         pthread_mutex_lock(&queue_mutex);
         if (queue->waitForSpace(&queue_mutex)) {
             ALOGV("writerTask waited for space");
         }
-        int bufferSize = queue->getWritableRegion(SENSOR_EVENT_QUEUE_CAPACITY, &buffer);
         // Do blocking poll outside of lock
         pthread_mutex_unlock(&queue_mutex);
 
@@ -160,17 +164,13 @@ void *writerTask(void* ptr) {
         if (eventsPolled <= 0 || eventsPolled > bufferSize) {
             if (eventsPolled < 0 || eventsPolled > bufferSize) {
                 ALOGE("Sub-HAL poll returned %d for a %d-event buffer", eventsPolled, bufferSize);
-                usleep(10000);
             }
+            usleep(10000);
             continue;
         }
         pthread_mutex_lock(&queue_mutex);
-        queue->markAsWritten(eventsPolled);
+        queue->write(buffer, eventsPolled, &queue_mutex, &data_available_cond);
         ALOGV("writerTask wrote %d events", eventsPolled);
-        if (waiting_for_data) {
-            ALOGV("writerTask - broadcast data_available_cond");
-            pthread_cond_broadcast(&data_available_cond);
-        }
         pthread_mutex_unlock(&queue_mutex);
     }
     // never actually returns
@@ -460,7 +460,8 @@ int sensors_poll_context_t::flush(int handle) {
         return -EINVAL;
     }
     PendingFlush request = {handle, module_index,
-            consumed_events[module_index] + static_cast<uint64_t>(queues[module_index]->getSize())};
+            consumed_events[module_index] +
+                    static_cast<uint64_t>(queues[module_index]->getPendingSize())};
     pending_flushes.push_back(request);
     pthread_cond_broadcast(&data_available_cond);
     pthread_mutex_unlock(&queue_mutex);

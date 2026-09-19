@@ -94,3 +94,15 @@ LOCAL_SANITIZE := never
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_CLASS := SHARED_LIBRARIES
 include $(BUILD_SHARED_LIBRARY)
+
+
+
+
+include $(CLEAR_VARS)
+LOCAL_MODULE := mediatest
+LOCAL_SRC_FILES := mediatest.cpp
+LOCAL_SHARED_LIBRARIES := libstagefright libmedia libstagefright_foundation libutils libbinder liblog libc++
+LOCAL_C_INCLUDES := frameworks/av/media/libstagefright/include frameworks/native/libs/nativewindow/include
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_PATH := $(TARGET_OUT_DATA_NATIVE_TESTS)/mediatest
+include $(BUILD_EXECUTABLE)

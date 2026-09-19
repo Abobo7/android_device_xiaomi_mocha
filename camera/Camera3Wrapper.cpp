@@ -15,9 +15,11 @@
 #include <memory>
 #include <mutex>
 #include <new>
+#include <set>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <unistd.h>
 #include <vector>
 #include <hardware/gralloc.h>
@@ -58,6 +60,33 @@ struct Stream {
     std::map<buffer_handle_t, std::unique_ptr<BufferReference>> buffers;
 };
 
+// Formats the stock HAL consumes as continuous output. Their sizes decide
+// which sensor mode the stock HAL selects.
+bool isProcessedFormat(uint32_t format) {
+    return format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED ||
+           format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+           format == HAL_PIXEL_FORMAT_RGBA_8888 ||
+           format == HAL_PIXEL_FORMAT_YV12;
+}
+
+std::set<std::pair<uint32_t, uint32_t>> processedGeometry(
+        const std::map<camera3_stream_t*, std::unique_ptr<Stream>>& streams) {
+    std::set<std::pair<uint32_t, uint32_t>> geometry;
+    for (const auto& item : streams) {
+        const camera3_stream_t* stream = item.second->client;
+        if (!stream || !isProcessedFormat(stream->format)) continue;
+        // Encoder input streams are added and removed around recording without
+        // changing the sensor mode the stock HAL selects. Reopening the device
+        // while the recorder is still releasing its camera buffers breaks the
+        // encoder source and wedges the new session, so ignore them here.
+        if (stream->usage & GRALLOC_USAGE_HW_VIDEO_ENCODER) continue;
+        // Only the set of distinct sizes matters: preview and its callback
+        // stream share one sensor mode.
+        geometry.emplace(stream->width, stream->height);
+    }
+    return geometry;
+}
+
 struct Frame {
     CameraMetadata settings;
     CameraMetadata partials;
@@ -75,6 +104,7 @@ public:
     camera3_device_t* vendor = nullptr;
     const camera_metadata_t* characteristics = nullptr;
     const gralloc_module_t* gralloc = nullptr;
+    std::string deviceName;
 
     Camera() {
         callbacks.ops.process_capture_result = resultCallback;
@@ -126,6 +156,28 @@ public:
             vendorStreams.push_back(&stream->legacy);
             next.emplace(client, std::move(stream));
         }
+        // The stock HAL picks the sensor mode from the processed output sizes
+        // and cannot change it while the sensor is streaming: the IMX179 VI/
+        // VIC pipeline stalls on syncpoints and never returns a buffer. Close
+        // the stock device so the sensor is powered down and configure_streams
+        // starts it again in the required mode.
+        bool geometryChanged = false;
+        {
+            std::lock_guard<std::mutex> stateLock(stateMutex);
+            geometryChanged = !streams.empty() &&
+                    processedGeometry(streams) != processedGeometry(next);
+        }
+        if (geometryChanged) {
+            ALOGI("Processed stream geometry changed; restarting stock camera device");
+            int result = reopenVendor();
+            if (result) {
+                ALOGE("Cannot restart stock camera device: %d", result);
+                for (auto& item : next) failedStreams.push_back(std::move(item.second));
+                std::lock_guard<std::mutex> stateLock(stateMutex);
+                fatal = true;
+                return result;
+            }
+        }
         camera3_stream_configuration_t legacyConfig = {};
         legacyConfig.num_streams = vendorStreams.size();
         legacyConfig.streams = vendorStreams.data();
@@ -165,6 +217,7 @@ public:
     const camera_metadata_t* defaultRequest(int type) {
         if (type < CAMERA3_TEMPLATE_PREVIEW || type >= CAMERA3_TEMPLATE_COUNT) return nullptr;
         std::lock_guard<std::mutex> requestLock(requestMutex);
+        if (!vendor) return nullptr;
         CameraMetadata& cached = templates[type];
         if (cached.isEmpty()) {
             const camera_metadata_t* stock = vendor->ops->construct_default_request_settings(vendor, type);
@@ -286,7 +339,7 @@ public:
             std::lock_guard<std::mutex> stateLock(stateMutex);
             closing = true;
         }
-        int result = vendor->common.close(&vendor->common);
+        int result = vendor ? vendor->common.close(&vendor->common) : 0;
         vendor = nullptr;
         frames.clear();
         streams.clear();
@@ -295,12 +348,23 @@ public:
     }
 
     void dump(int fd) {
+        // dump() can race configure/close and must not wait for a stuck stock
+        // HAL. Keep vendor alive for the call, or skip it if a request owns it.
+        std::unique_lock<std::mutex> requestLock(requestMutex, std::try_to_lock);
+        if (!requestLock.owns_lock()) {
+            dprintf(fd, "Mocha HAL3.0 adapter: request busy; stock dump skipped\n");
+            return;
+        }
         {
-            std::lock_guard<std::mutex> stateLock(stateMutex);
+            std::unique_lock<std::mutex> stateLock(stateMutex, std::try_to_lock);
+            if (!stateLock.owns_lock()) {
+                dprintf(fd, "Mocha HAL3.0 adapter: state busy; stock dump skipped\n");
+                return;
+            }
             dprintf(fd, "Mocha HAL3.0 adapter: inflight=%zu fatal=%d closing=%d\n",
                     frames.size(), fatal, closing);
         }
-        if (vendor->ops->dump) vendor->ops->dump(vendor, fd);
+        if (vendor && vendor->ops->dump) vendor->ops->dump(vendor, fd);
     }
 
 private:
@@ -311,11 +375,45 @@ private:
     std::map<camera3_stream_t*, std::unique_ptr<Stream>> streams;
     std::vector<std::unique_ptr<Stream>> failedStreams;
     std::map<uint32_t, std::shared_ptr<Frame>> frames;
+    // HAL3 templates returned to the client remain valid until this outer
+    // device is closed, including across internal stock-device restarts.
     std::array<CameraMetadata, CAMERA3_TEMPLATE_COUNT> templates;
     CameraMetadata lastSettings;
     int32_t afTriggerId = 0, aeTriggerId = 0;
     bool fatal = false;
     bool closing = false;
+
+    int reopenVendor() {
+        camera_module_t* stock = get_stock_camera_module();
+        if (!stock || !stock->common.methods || !stock->common.methods->open) return -ENODEV;
+        if (vendor) {
+            vendor->common.close(&vendor->common);
+            vendor = nullptr;
+        }
+        hw_device_t* opened = nullptr;
+        int result = stock->common.methods->open(&stock->common, deviceName.c_str(), &opened);
+        if (result) return result;
+        if (!opened) return -ENODEV;
+        vendor = reinterpret_cast<camera3_device_t*>(opened);
+        if (vendor->common.version != CAMERA_DEVICE_API_VERSION_3_0 || !vendor->ops ||
+                !vendor->ops->initialize || !vendor->ops->configure_streams ||
+                !vendor->ops->register_stream_buffers ||
+                !vendor->ops->construct_default_request_settings ||
+                !vendor->ops->process_capture_request) {
+            vendor->common.close(&vendor->common);
+            vendor = nullptr;
+            return -ENODEV;
+        }
+        result = vendor->ops->initialize(vendor, &callbacks.ops);
+        if (result) {
+            vendor->common.close(&vendor->common);
+            vendor = nullptr;
+            return result;
+        }
+        // Retain the owned template clones: restarting the stock device does
+        // not end the lifetime promised by construct_default_request_settings.
+        return 0;
+    }
 
     int drain() {
         std::unique_lock<std::mutex> lock(stateMutex);
@@ -514,6 +612,7 @@ int camera3_device_open(const hw_module_t* module, const char* name, hw_device_t
     if (result) return result;
     adapter->gralloc = reinterpret_cast<const gralloc_module_t*>(gralloc);
     if (!adapter->gralloc->registerBuffer || !adapter->gralloc->unregisterBuffer) return -ENODEV;
+    adapter->deviceName = name ? name : "";
     hw_device_t* opened = nullptr;
     result = stock->common.methods->open(&stock->common, name, &opened);
     if (result) return result;

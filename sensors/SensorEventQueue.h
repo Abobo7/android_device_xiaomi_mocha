@@ -21,19 +21,18 @@
 #include <pthread.h>
 
 /*
- * Fixed-size circular queue, with an API developed around the sensor HAL poll() method.
- * Poll() takes a pointer to a buffer, which is written by poll() before it returns.
- * This class can provide a pointer to a spot in its internal buffer for poll() to
- * write to, instead of using an intermediate buffer and a memcpy.
+ * Fixed-size circular queue. Legacy HALs must poll into a separate buffer:
+ * they may write a whole sensor pair even when a ring-buffer tail has one slot.
  *
  * Thread safety:
- * Reading can be done safely after grabbing the mutex lock, while poll() writing in a separate
- * thread without a mutex lock. But there can only be one writer at a time.
+ * All access requires the caller's mutex. There can only be one writer at a
+ * time. write() releases that mutex while waiting for the reader to free space.
  */
 class SensorEventQueue {
     int mCapacity;
     int mStart; // start of readable region
     int mSize; // number of readable items
+    int mPendingSize; // polled items waiting for space in the ring
     sensors_event_t* mData;
     pthread_cond_t mSpaceAvailableCondition;
 
@@ -56,9 +55,20 @@ public:
     // Only call while holding the lock.
     void markAsWritten(int count);
 
+    // Copy a validated poll batch, splitting at ring boundaries and waiting
+    // for space as needed. Call with mutex held; it is also held on return.
+    // Signal readers after each chunk, before possibly waiting for space.
+    void write(const sensors_event_t* events, int count, pthread_mutex_t* mutex,
+            pthread_cond_t* dataAvailable);
+
     // Gets the number of readable records.
     // Only call while holding the lock.
     int getSize();
+
+    // Readable plus already-polled items awaiting ring space. A flush barrier
+    // must include both, even if write() is waiting with the mutex released.
+    // Only call while holding the lock.
+    int getPendingSize();
 
     // Returns pointer to the first readable record, or NULL if size() is zero.
     // Only call this while holding the lock.
