@@ -20,8 +20,15 @@ TARGET_SCREEN_HEIGHT := 2048
 TARGET_SCREEN_WIDTH := 1536
 TARGET_TEGRA_VERSION := t124
 
-# 8.1 removed the separate hwui-memory makefiles; dalvik-heap covers the rest
-$(call inherit-product, frameworks/native/build/phone-xxhdpi-2048-dalvik-heap.mk)
+# Dalvik heap: the 8.1 values. frameworks/native in 16.0 no longer ships
+# phone-xxhdpi-2048-dalvik-heap.mk, and no remaining profile matches it.
+PRODUCT_PROPERTY_OVERRIDES += \
+    dalvik.vm.heapstartsize=16m \
+    dalvik.vm.heapgrowthlimit=192m \
+    dalvik.vm.heapsize=512m \
+    dalvik.vm.heaptargetutilization=0.75 \
+    dalvik.vm.heapminfree=2m \
+    dalvik.vm.heapmaxfree=8m
 
 
 $(call inherit-product-if-exists, vendor/xiaomi/mocha/mocha-vendor.mk)
