@@ -1,11 +1,8 @@
 [
  {
    "repository": "android_hardware_nvidia_power",
-   "target_path": "hardware/nvidia/power"
- },
- {
-   "repository": "android_external_stlport",
-   "target_path": "external/stlport"
+   "target_path": "hardware/nvidia/power",
+   "branch": "lineage-15.1"
  },
  {
    "repository": "android_hardware_broadcom_fm",
