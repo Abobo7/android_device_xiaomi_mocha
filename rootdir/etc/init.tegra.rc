@@ -44,6 +44,14 @@ on post-fs-data
     chown system system /mnt/usercalib
     chmod 0771 /mnt/usercalib
 
+    # The WebView renderer (isolated process) reopens the trace_marker fd it
+    # inherits from webview_zygote. Zygote's fd whitelist includes this path
+    # and aborts the child (JNI FatalError -> SIGABRT) when the reopen fails.
+    # debugfs creates it as 0220 root:root, so allow everyone to write it;
+    # SELinux already permits all domains to write (allow domain
+    # debugfs_trace_marker:file w_file_perms).
+    chmod 0222 /sys/kernel/debug/tracing/trace_marker
+
     # create the lost+found directories, so as to enforce our permissions
     mkdir /mnt/usercalib/lost+found 0770 root root
 
