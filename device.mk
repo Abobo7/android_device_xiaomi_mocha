@@ -232,6 +232,14 @@ PRODUCT_PACKAGES += \
     android.hardware.power@1.0-service \
     power.tegra
 
+# USB port HAL
+# The framework's UsbPortManager requires an IUsb HAL; without one the
+# Settings USB function chooser (file transfer / PTP) is permanently disabled.
+# mocha has no Type-C controller, so ship the simplified legacy-gadget HAL.
+PRODUCT_PACKAGES += \
+    android.hardware.usb@1.0-service.mocha
+
+
 # Sensors
 PRODUCT_PACKAGES += \
     android.hardware.sensors@1.0-impl \
@@ -250,4 +258,11 @@ PRODUCT_COPY_FILES += \
 
 # Console Mode
 $(call inherit-product-if-exists, vendor/xiaomi/mocha/consolemode-blobs.mk)
+
+# Vendor seccomp policy additions for the legacy NVIDIA OMX / libcuda blobs.
+# Android 9 sandboxes the media codec service; the stock blobs call syscalls
+# (sysinfo, mkdirat, ...) that the base policy does not allow and are killed
+# with SIGSYS, which breaks hardware video decoding.
+PRODUCT_COPY_FILES += \
+    device/xiaomi/mocha/seccomp/mediacodec.policy:$(TARGET_COPY_OUT_VENDOR)/etc/seccomp_policy/mediacodec.policy
 

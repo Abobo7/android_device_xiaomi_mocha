@@ -1,0 +1,7 @@
+# Simplified USB port HAL for Xiaomi Mi Pad (mocha): reports one fixed
+# device/sink port backed by the legacy android_usb gadget sysfs state.
+service vendor.usb-hal-1-0 /vendor/bin/hw/android.hardware.usb@1.0-service.mocha
+    class hal
+    user system
+    group system
+    seclabel u:r:hal_usb_default:s0

@@ -152,6 +152,8 @@
 # flynnd
 (/system)?/vendor/bin/hw/flynnd		u:object_r:flynnd_exec:s0
 (/system)?/vendor/bin/start_flynnd.sh		u:object_r:start_flynnd_exec:s0
+# Simplified USB port HAL (legacy gadget)
+(/system)?/vendor/bin/hw/android\.hardware\.usb@1\.0-service\.mocha		u:object_r:hal_usb_default_exec:s0
 # ctload
 (/system)?/vendor/bin/ctload		u:object_r:ctload_exec:s0
 # update_js_touch_fw

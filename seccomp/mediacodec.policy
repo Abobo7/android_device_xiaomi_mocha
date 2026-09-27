@@ -1,0 +1,45 @@
+# Additional seccomp syscalls for the legacy NVIDIA media blobs.
+#
+# Android 9 runs the media codec service (/system/bin/media.codec, which also
+# hosts the OMX HAL) inside a seccomp sandbox. The stock NVIDIA OMX decoders
+# and libcuda.so predate that sandbox and use syscalls that the base
+# mediacodec-arm policy (frameworks/av/services/mediacodec/seccomp_policy)
+# does not allow. A blocked syscall kills the whole codec process (SIGSYS),
+# e.g.:
+#   media.codec: libminijail blocked syscall: sysinfo   (OMX.Nvidia.h265.decode)
+#   media.codec: libminijail blocked syscall: mkdirat   (libcuda.so, "/tmp")
+# which aborts hardware video decoding (UU Remote stays on the first frame).
+#
+# minijail appends this vendor policy to the base policy (see
+# frameworks/av/services/minijail/minijail.cpp SetUpMinijail), so only the
+# extra syscalls needed by the legacy blobs are listed here.
+sysinfo: 1
+mkdirat: 1
+unlinkat: 1
+renameat: 1
+ftruncate64: 1
+truncate64: 1
+fsync: 1
+fdatasync: 1
+fchmod: 1
+fchmodat: 1
+getpid: 1
+gettid: 1
+geteuid32: 1
+getgid32: 1
+getegid32: 1
+uname: 1
+getrusage: 1
+eventfd2: 1
+clock_nanosleep: 1
+clock_getres: 1
+sched_getaffinity: 1
+sched_setaffinity: 1
+sched_getparam: 1
+sched_getscheduler: 1
+mlock: 1
+munlock: 1
+munlockall: 1
+setitimer: 1
+getitimer: 1
+memfd_create: 1

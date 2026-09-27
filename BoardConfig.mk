@@ -88,6 +88,14 @@ DEVICE_MANIFEST_FILE := device/xiaomi/mocha/manifest.xml
 TARGET_HAS_LEGACY_CAMERA_HAL1 := false
 TARGET_NEEDS_PLATFORM_TEXT_RELOCATIONS := true
 
+# The 3.10 kernel rejects adding a route via a directly-connected gateway
+# ("Network is unreachable") unless the main table is reachable for the
+# kernel's internal gateway lookup. netd only installs the rule
+# "from all fwmark 0x0/0xffff lookup main" (priority 23000) when this flag
+# is set. Without it, ConnectityService's IPv4 default route add fails once
+# and is never retried, leaving Wi-Fi without IPv4 connectivity.
+TARGET_NEEDS_NETD_DIRECT_CONNECT_RULE := true
+
 # CMHW
 BOARD_USES_CYANOGEN_HARDWARE := true
 BOARD_HARDWARE_CLASS := \

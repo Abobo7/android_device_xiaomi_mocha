@@ -1,0 +1,8 @@
+# Simplified USB port HAL for mocha.
+#
+# The service reads the legacy android_usb gadget state to report the
+# single non-switchable port (device/sink). The generic hal_usb domain
+# rules already cover uevent sockets and generic sysfs access; this file
+# only adds read access to the gadget sysfs nodes.
+allow hal_usb_default sysfs_android_usb:dir r_dir_perms;
+allow hal_usb_default sysfs_android_usb:file r_file_perms;
