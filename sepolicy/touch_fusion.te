@@ -1,11 +1,11 @@
 # mocha-specific policy for touch_fusion (Raydium touch userspace helper)
 
 type touch_fusion, domain;
-type touch_fusion_exec, exec_type, file_type;
+type touch_fusion_exec, exec_type, vendor_file_type, file_type;
 
 init_daemon_domain(touch_fusion)
 
-allow touch_fusion self:capability { dac_override };
+
 allow touch_fusion input_device:chr_file rw_file_perms;
 allow touch_fusion tty_device:chr_file rw_file_perms;
 allow touch_fusion sysfs:file rw_file_perms;

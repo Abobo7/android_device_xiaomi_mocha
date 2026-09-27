@@ -7,6 +7,12 @@ ro.sf.lcd_density=320
 
 # fix random crashes
 persist.tegra.compositor=surfaceflinger
+# Stock HWC 1.1 through the Pie adapter displays stale layers during transitions.
+# Force GPU composition; keep the stock HWC for presentation and vsync.
+ro.sf.force_client_composition=true
+# Stock kernel supports FUSE, but not sdcardfs/esdfs.
+ro.sys.legacy_fuse=true
+ro.sys.sdcardfs=false
 
 ro.input.noresample=1
 ro.zygote.disable_gl_preload=true
@@ -45,3 +51,6 @@ media.stagefright.legacyencoder=true
 
 # Stock camera orientation uses framework SensorManager over /dev/binder.
 ro.camera.legacy_system_binder=true
+ro.camera.legacy_text_relocations=true
+# Stock conn_init emits unpadded per-device Bluetooth address octets.
+ro.bluetooth.legacy_bdaddr=true

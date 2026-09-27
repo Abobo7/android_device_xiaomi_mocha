@@ -1,8 +1,21 @@
 # Platform compatibility for stock mocha blobs
 
-Run `bash device/xiaomi/mocha/apply-platform-patches.sh` from a LineageOS 15.1
+Run `bash device/xiaomi/mocha/apply-platform-patches.sh` from the active LineageOS
 source tree before building. The script verifies each patch before applying
-it and recognizes patches that are already applied.
+it and recognizes patches that are already applied. The same set is
+used with the 16.0 tree.
+
+Bionic Fortify normally checks for O_TMPFILE when validating open flags. The
+mocha kernel exports older UAPI headers that omit that flag, so the guard
+falls back to checking O_CREAT when O_TMPFILE is unavailable. Current headers
+retain the full upstream O_TMPFILE check.
+
+The NVIDIA power HAL is pinned to its 15.1 branch because the 16.0 branch
+replaces the legacy `power.tegra` module with a HIDL implementation. Its
+16.0 compatibility patch keeps GNU-designator and unused-code diagnostics
+visible without letting Android 9 Clang's `-Werror` policy reject the legacy HAL. It
+removes the retired `POWER_HINT_SET_PROFILE` enum from the hint table (its handler was
+already a no-op) and sizes the table for the current Android 9 enum.
 
 The GraphicBuffer patch restores the two constructor ABIs imported by the
 stock HWC and OMX adaptor. It also retains a 120-byte GraphicBuffer on 32-bit
@@ -11,7 +24,9 @@ that its allocation is exactly 120 bytes; unmodified Android 8.1 needs 136.
 A constructor alias alone would overwrite the caller's allocation.
 
 Buffer IDs, generation numbers and the retained native-buffer reference live
-in separately allocated private state. The public native-buffer layout and
+in separately allocated private state. The BufferState constructor and destructor
+are out of line so its unique_ptr<DetachedBufferHandle> member is destroyed where
+the handle type is complete. The public native-buffer layout and
 flattened Binder representation stay the same. Source consumers of the C++
 class must be rebuilt with the patched header; this is not a libui-only binary
 replacement. The cost is one small additional allocation per GraphicBuffer.
@@ -69,3 +84,91 @@ errors does not correct the failed IPC.
 Tested baselines: frameworks/native `c6d109f4e3cdb41d6a6601b825c420e2731af59a`,
 frameworks/base `39c4a924c7ed9f6093c0983de947734151e4bc7e`,
 hardware/interfaces `5f14a29297db529a6f82527d8444af8ff0f65476`.
+
+The SurfaceFlinger client-composition option defaults off. Mocha enables
+ro.sf.force_client_composition to avoid stale pages and notification shade
+flicker through stock HWC 1.1 on the Pie HWC2On1 adapter. On-device testing
+showed that switching Skia GL to HWUI GL alone did not fix either symptom;
+forcing client composition did, including after restoring Skia GL. The
+option initializes the same state as SurfaceFlinger debug transaction 1008.
+GPU hardware rendering remains enabled, and stock HWC still handles display
+presentation and vsync. Increased GPU composition work/power is a limitation;
+this is a compatibility fallback, not a claim to repair the proprietary HAL.
+SetupWizard source is unchanged. Installed OTA boot verification passed: the
+flag initializes automatically, the renderer override is empty, and SystemUI
+uses Skia GL. The user confirmed normal page and notification interactions.
+
+
+## Pie runtime follow-ups
+
+Fence default construction/destruction is out of line again to export the
+legacy symbols required by the stock camera HAL. Ownership and layout retain
+Pie unique_fd semantics. The camera provider separately opts into pre-M linker
+compatibility with ro.camera.legacy_text_relocations; stock libFaceProc.so has
+text relocations. This setting is process scoped and defaults off.
+
+The factory conn_init program rewrites persist.service.bdroid.bdaddr with
+unpadded octets and a trailing newline on every boot. The Bluetooth address
+fallback parser accepts that format only with ro.bluetooth.legacy_bdaddr;
+normal parsing is attempted first, invalid and zero/broadcast addresses are
+rejected, and no device address is embedded in the ROM. Host ASan/UBSan tests
+cover valid and invalid inputs. The V4L2 libbt paths restore the Oreo division
+of work: UIM owns power/firmware setup. Device configuration also corrects the
+UIM executable path, bcm_ldisc sysfs prefix, and HCI line discipline 26.
+Installed v2 reached Bluetooth ON with zero crashes; pairing/audio remain
+unverified. Both cameras, saved photos, video saving and return to photography
+passed user testing with the temporary FUSE storage backend.
+
+Pie removed the userspace FUSE implementation from sdcard, but vold still
+supports its mount lifecycle. The stock kernel has FUSE and no sdcardfs/esdfs.
+The system/core dispatcher opts into device module sdcard-fuse only when
+ro.sys.legacy_fuse=true; mocha sets ro.sys.sdcardfs=false. The module imports
+the validated Oreo sources, preserves licenses, and accepts Pie's sdcardfs-only
+-i flag as a no-op. Source revision and hashes are in sdcard-fuse/README.md.
+The normal vold-managed mount path is retained and no data migration is needed.
+
+Installed v3 boots with FUSE mounted automatically, no persistent override or
+diagnostic bind mount. The user confirmed photo saving and viewing after
+that reboot. Temporary files/properties were removed and ADB unrooted.
+
+
+## Skia GL hardware bitmaps on the stock NVIDIA driver
+
+NVIDIA Tegra 334.00 reports GLES 3.1 / ESSL 3.10 and
+GL_OES_EGL_image_external, but no GL_OES_EGL_image_external_essl3.
+Skia chooses an ES 3.x shader generation, GrGLCaps consequently disables
+externalTextureSupport, and GrGLGpu::check_backend_texture rejects the
+GL_TEXTURE_EXTERNAL_OES images used for Android hardware bitmaps. Trebuchet
+decodes its cached icons as Bitmap.Config.HARDWARE, explaining why those icons
+disappear while other drawing paths continue to work. Skipping prepareToDraw
+does not fix this.
+
+The patch selects ESSL 1.00 only for NVIDIA GLES contexts with that precise
+extension mismatch. It retains Skia GL, the GLES context, GPU rendering and
+hardware bitmap storage. Desktop GL and drivers with the ES3 extension retain
+their original shader generation. The same compatibility principle appears in
+newer upstream Skia's fPreferExternalImagesOverES3 option.
+
+On-device isolation: ESSL 1.00 external-image shader compilation succeeds;
+ESSL 3.00 with the ES3 extension fails explicitly. Instrumented uploads report
+GL_NO_ERROR, valid source pixels and normal pixel-store state. A controlled
+Skia-library comparison changes externalTextureSupport from false to true.
+All nine copy/decode/Picture hardware-bitmap round trips (123, 128 and 256 px)
+then match the source pixels exactly, with the Skia GL renderer retained.
+Runtime screenshot and installed-ROM verification are recorded in the handover.
+
+The companion patch keys persistent GL program binaries by a format tag, GL/GLES
+standard, and selected GLSL generation before the existing program descriptor.
+Both cache load and store use the same helper. The in-memory descriptor remains
+context-local. This is necessary because the old descriptor omits shader language
+and Android's FileBlobCache only invalidates on ro.build.id, which remains
+PQ3A.190801.002 across these builds. No application or shader cache is cleared.
+
+With both patches and the existing on-device caches retained, desktop icons,
+clock shadows, the application drawer, notifications, and Settings render
+correctly. Restarting Trebuchet and reusing the disk cache also passes. Captured
+cache files retain all 23 old launcher keys and 21 old SystemUI keys alongside
+the new namespace. Fifteen launcher and seventeen SystemUI entries have the same
+old descriptor but different program binaries, confirming that they need distinct
+persistent keys. Nine hardware-bitmap readbacks still match every source pixel.
+Evidence: diagnostics/skia-desktop-20260927-1030 in the handover repository.

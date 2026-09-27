@@ -48,6 +48,7 @@ PRODUCT_PACKAGES += \
     init.t124.rc \
     init.tegra.rc \
     init.tlk.rc \
+    sdcard-fuse \
     init.tn8.rc \
     init.tn8.usb.rc \
     init.tn8_common.rc \
@@ -102,9 +103,11 @@ PRODUCT_COPY_FILES += \
     $(LOCAL_PATH)/audio/audio_policy.conf:system/etc/audio_policy.conf \
     $(LOCAL_PATH)/audio/audio.mocha.xml:system/etc/audio.mocha.xml
 
-# Android 8.1 wrappers for the stock gralloc0 module. Mapper is passthrough;
-# buffer allocations are served over hwbinder by the allocator service.
+# Android 8.1/9 wrappers. Composer 2.1 adapts the stock HWC 1.1 module.
+# Mapper is passthrough; buffers are served over hwbinder by the allocator.
 PRODUCT_PACKAGES += \
+    android.hardware.graphics.composer@2.1-impl \
+    android.hardware.graphics.composer@2.1-service \
     android.hardware.graphics.mapper@2.0-impl \
     android.hardware.graphics.allocator@2.0-impl \
     android.hardware.graphics.allocator@2.0-service
@@ -198,9 +201,12 @@ PRODUCT_PACKAGES += \
 PRODUCT_CHARACTERISTICS := tablet
 
 # Keep authenticated ADB available during first boot of development builds.
+# The 3.10 kernel lacks FunctionFS AIO support; use adbd synchronous I/O.
 # Define USB defaults in one property file so build.prop cannot override them.
 ifneq ($(filter eng userdebug,$(TARGET_BUILD_VARIANT)),)
-PRODUCT_DEFAULT_PROPERTY_OVERRIDES += persist.sys.usb.config=mtp,adb
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    persist.sys.usb.config=mtp,adb \
+    sys.usb.ffs.aio_compat=true
 # Use the standard logcatd service; it starts only after /data is mounted.
 PRODUCT_PROPERTY_OVERRIDES += \
     logd.logpersistd=logcatd \

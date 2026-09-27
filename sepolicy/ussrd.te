@@ -1,7 +1,7 @@
 # mocha-specific policy for ussrd (USB/system server resource daemon)
 
 type ussrd, domain;
-type ussrd_exec, exec_type, file_type;
+type ussrd_exec, exec_type, vendor_file_type, file_type;
 
 init_daemon_domain(ussrd)
 
@@ -11,4 +11,4 @@ allow ussrd sysfs:dir search;
 allow ussrd sysfs:file rw_file_perms;
 allow ussrd debugfs_clock:dir search;
 allow ussrd debugfs_clock:file w_file_perms;
-allow ussrd self:capability { dac_override sys_admin };
+allow ussrd self:capability { sys_admin };

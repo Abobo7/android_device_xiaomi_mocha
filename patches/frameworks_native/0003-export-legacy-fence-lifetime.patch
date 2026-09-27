@@ -1,0 +1,38 @@
+diff --git a/libs/ui/Fence.cpp b/libs/ui/Fence.cpp
+index ff53aa8f2..7419b13fd 100644
+--- a/libs/ui/Fence.cpp
++++ b/libs/ui/Fence.cpp
+@@ -37,6 +37,11 @@ namespace android {
+ 
+ const sp<Fence> Fence::NO_FENCE = sp<Fence>(new Fence);
+ 
++// Export legacy entry points used by stock vendor camera libraries.
++Fence::Fence() = default;
++
++Fence::~Fence() = default;
++
+ Fence::Fence(int fenceFd) :
+     mFenceFd(fenceFd) {
+ }
+diff --git a/libs/ui/include/ui/Fence.h b/libs/ui/include/ui/Fence.h
+index ec67fa972..59717ebb6 100644
+--- a/libs/ui/include/ui/Fence.h
++++ b/libs/ui/include/ui/Fence.h
+@@ -50,7 +50,7 @@ public:
+     // Construct a new Fence object with an invalid file descriptor.  This
+     // should be done when the Fence object will be set up by unflattening
+     // serialized data.
+-    Fence() = default;
++    Fence();
+ 
+     // Construct a new Fence object to manage a given fence file descriptor.
+     // When the new Fence object is destructed the file descriptor will be
+@@ -138,7 +138,7 @@ public:
+ private:
+     // Only allow instantiation using ref counting.
+     friend class LightRefBase<Fence>;
+-    ~Fence() = default;
++    ~Fence();
+ 
+     base::unique_fd mFenceFd;
+ };

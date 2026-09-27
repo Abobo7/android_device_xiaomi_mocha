@@ -1,0 +1,16 @@
+diff --git a/sdcard/sdcard.cpp b/sdcard/sdcard.cpp
+index dc36596b1..1c82f0f9c 100644
+--- a/sdcard/sdcard.cpp
++++ b/sdcard/sdcard.cpp
+@@ -214,6 +214,11 @@ static int usage() {
+ }
+ 
+ int main(int argc, char **argv) {
++    // Optional userspace backend for pre-sdcardfs kernels.
++    if (property_get_bool("ro.sys.legacy_fuse", false)) {
++        execv("/system/bin/sdcard-fuse", argv);
++        PLOG(FATAL) << "Failed to execute legacy FUSE daemon";
++    }
+     const char *source_path = NULL;
+     const char *label = NULL;
+     uid_t uid = 0;

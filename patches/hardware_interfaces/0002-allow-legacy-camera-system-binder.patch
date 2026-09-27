@@ -1,15 +1,20 @@
+diff --git a/camera/provider/2.4/default/service.cpp b/camera/provider/2.4/default/service.cpp
+index 7eeb6379..96ba8ec6 100644
 --- a/camera/provider/2.4/default/service.cpp
 +++ b/camera/provider/2.4/default/service.cpp
-@@ -20,6 +20,8 @@
+@@ -20,6 +20,11 @@
  #include <hidl/LegacySupport.h>
  
  #include <binder/ProcessState.h>
 +#include <string.h>
 +#include <sys/system_properties.h>
++
++// Platform libdl entry point, intentionally not an NDK application API.
++extern "C" void android_set_application_target_sdk_version(uint32_t target);
  
  using android::hardware::camera::provider::V2_4::ICameraProvider;
  using android::hardware::defaultPassthroughServiceImplementation;
-@@ -29,6 +31,12 @@
+@@ -29,6 +34,20 @@ int main()
      ALOGI("Camera provider Service is starting.");
      // The camera HAL may communicate to other vendor components via
      // /dev/vndbinder
@@ -20,6 +25,14 @@
 +    char legacyBinder[PROP_VALUE_MAX] = {};
 +    __system_property_get("ro.camera.legacy_system_binder", legacyBinder);
 +    const char* driver = strcmp(legacyBinder, "true") == 0 ? "/dev/binder" : "/dev/vndbinder";
++    char legacyTextRelocations[PROP_VALUE_MAX] = {};
++    __system_property_get("ro.camera.legacy_text_relocations", legacyTextRelocations);
++    if (strcmp(legacyTextRelocations, "true") == 0) {
++        // Stock 32-bit camera dependencies have text relocations. Apply
++        // compatibility before loading HALs or starting provider threads.
++        android_set_application_target_sdk_version(22);
++        ALOGI("Using pre-M linker compatibility for legacy camera HAL");
++    }
 +    android::ProcessState::initWithDriver(driver);
      return defaultPassthroughServiceImplementation<ICameraProvider>("legacy/0", /*maxThreads*/ 6);
  }

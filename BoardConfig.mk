@@ -42,7 +42,7 @@ TARGET_KERNEL_SOURCE := kernel/xiaomi/mocha
 TARGET_KERNEL_CONFIG := mocha_user_defconfig
 # This kernel only boots with the linaro 4.9.4 toolchain
 TARGET_KERNEL_CROSS_COMPILE_PREFIX := arm-linux-gnueabihf-
-KERNEL_TOOLCHAIN := $(ANDROID_BUILD_TOP)/prebuilts/gcc/linux-x86/arm/gcc-linaro-4.9.4-2017.01/bin
+KERNEL_TOOLCHAIN = $(BUILD_TOP)/prebuilts/gcc/linux-x86/arm/gcc-linaro-4.9.4-2017.01/bin
 BOARD_KERNEL_IMAGE_NAME := zImage
 BOARD_KERNEL_SEPARATED_DT := true
 BOARD_MKBOOTIMG_ARGS := --ramdisk_offset $(BOARD_RAMDISK_OFFSET) --tags_offset $(BOARD_KERNEL_TAGS_OFFSET)
@@ -74,6 +74,9 @@ BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR ?= device/xiaomi/mocha/bluetooth
 
 #FM
 BOARD_HAVE_BCM_FM := true
+# Pie UIM defaults to a different board sysfs path.
+BOARD_HAVE_BCM_FM_SYSFS := /sys/bus/platform/drivers/bcm_ldisc/bcm_ldisc/
+BOARD_BRCM_HCI_NUM := 26
 
 # Graphics
 USE_OPENGL_RENDERER := true

@@ -445,3 +445,5 @@
 /system/etc/firmware/fw_bcmdhd_apsta\.bin	u:object_r:vendor_firmware_wifi_file:s0
 /system/etc/firmware/nvram\.txt	u:object_r:vendor_firmware_wifi_file:s0
 /system/etc/firmware/BCM4350C0\.hcd	u:object_r:vendor_firmware_wifi_file:s0
+
+/system/bin/sdcard-fuse                           u:object_r:sdcardd_exec:s0

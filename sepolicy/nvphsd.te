@@ -49,7 +49,7 @@ allow nvphsd nvphsd_data:file create_file_perms;
 allow nvphsd surfaceflinger_fc:file r_file_perms;
 
 # thermal
-allow nvphsd sysfs_thermal:dir rw_dir_perms;
+allow nvphsd sysfs_thermal:dir r_dir_perms;
 allow nvphsd sysfs_thermal:file rw_file_perms;
 
 # Allow to write to nvfeedback log file

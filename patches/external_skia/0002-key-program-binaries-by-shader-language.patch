@@ -1,0 +1,45 @@
+diff --git a/src/gpu/gl/builders/GrGLProgramBuilder.cpp b/src/gpu/gl/builders/GrGLProgramBuilder.cpp
+index 1edd19b929..4a0b30efdf 100644
+--- a/src/gpu/gl/builders/GrGLProgramBuilder.cpp
++++ b/src/gpu/gl/builders/GrGLProgramBuilder.cpp
+@@ -29,6 +29,22 @@
+ #define GL_CALL(X) GR_GL_CALL(this->gpu()->glInterface(), X)
+ #define GL_CALL_RET(R, X) GR_GL_CALL_RET(this->gpu()->glInterface(), R, X)
+ 
++static sk_sp<SkData> make_persistent_cache_key(const GrProgramDesc& desc,
++                                             const GrGLContextInfo& context) {
++    // Program descriptors are local to a context and do not identify the shader
++    // language. Persistent binaries can outlive that context (or a library
++    // update), so distinguish both GL/GLES and the selected GLSL generation.
++    // The tag also separates these keys from the old, unprefixed descriptors.
++    const uint32_t shaderKey[] = {SkSetFourByteTag('G', 'L', 'P', 'C'),
++                                 static_cast<uint32_t>(context.standard()),
++                                 static_cast<uint32_t>(context.glslGeneration())};
++    sk_sp<SkData> key = SkData::MakeUninitialized(sizeof(shaderKey) + desc.keyLength());
++    auto* bytes = static_cast<uint8_t*>(key->writable_data());
++    memcpy(bytes, shaderKey, sizeof(shaderKey));
++    memcpy(bytes + sizeof(shaderKey), desc.asKey(), desc.keyLength());
++    return key;
++}
++
+ GrGLProgram* GrGLProgramBuilder::CreateProgram(const GrPipeline& pipeline,
+                                                const GrPrimitiveProcessor& primProc,
+                                                GrProgramDesc* desc,
+@@ -47,7 +63,7 @@ GrGLProgram* GrGLProgramBuilder::CreateProgram(const GrPipeline& pipeline,
+     GrGLProgramBuilder builder(gpu, pipeline, primProc, desc);
+ 
+     if (gpu->getContext()->getPersistentCache() && gpu->glCaps().programBinarySupport()) {
+-        sk_sp<SkData> key = SkData::MakeWithoutCopy(desc->asKey(), desc->keyLength());
++        sk_sp<SkData> key = make_persistent_cache_key(*desc, gpu->ctxInfo());
+         builder.fCached = gpu->getContext()->getPersistentCache()->load(*key);
+         // the eventual end goal is to completely skip emitAndInstallProcs on a cache hit, but it's
+         // doing necessary setup in addition to generating the SkSL code. Currently we are only able
+@@ -283,7 +299,7 @@ GrGLProgram* GrGLProgramBuilder::finalize() {
+         GL_CALL(GetProgramiv(programID, GL_PROGRAM_BINARY_LENGTH, &length));
+         if (length > 0) {
+             // store shader in cache
+-            sk_sp<SkData> key = SkData::MakeWithoutCopy(desc()->asKey(), desc()->keyLength());
++            sk_sp<SkData> key = make_persistent_cache_key(*desc(), fGpu->ctxInfo());
+             GrGLenum binaryFormat;
+             std::unique_ptr<char[]> binary(new char[length]);
+             GL_CALL(GetProgramBinary(programID, length, &length, &binaryFormat, binary.get()));

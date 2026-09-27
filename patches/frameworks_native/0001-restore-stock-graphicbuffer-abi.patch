@@ -1,10 +1,38 @@
+diff --git a/libs/gui/Surface.cpp b/libs/gui/Surface.cpp
+index 2de14c884..d857c9a29 100644
+--- a/libs/gui/Surface.cpp
++++ b/libs/gui/Surface.cpp
+@@ -1316,13 +1316,13 @@ int Surface::attachBuffer(ANativeWindowBuffer* buffer)
+     }
+ 
+     sp<GraphicBuffer> graphicBuffer(static_cast<GraphicBuffer*>(buffer));
+-    uint32_t priorGeneration = graphicBuffer->mGenerationNumber;
+-    graphicBuffer->mGenerationNumber = mGenerationNumber;
++    uint32_t priorGeneration = graphicBuffer->getGenerationNumber();
++    graphicBuffer->setGenerationNumber(mGenerationNumber);
+     int32_t attachedSlot = -1;
+     status_t result = mGraphicBufferProducer->attachBuffer(&attachedSlot, graphicBuffer);
+     if (result != NO_ERROR) {
+         ALOGE("attachBuffer: IGraphicBufferProducer call failed (%d)", result);
+-        graphicBuffer->mGenerationNumber = priorGeneration;
++        graphicBuffer->setGenerationNumber(priorGeneration);
+         return result;
+     }
+     if (mReportRemovedBuffers && (mSlots[attachedSlot].buffer != nullptr)) {
 diff --git a/libs/ui/GraphicBuffer.cpp b/libs/ui/GraphicBuffer.cpp
+index 7670ac6fb..492ad652e 100644
 --- a/libs/ui/GraphicBuffer.cpp
 +++ b/libs/ui/GraphicBuffer.cpp
-@@ -28,6 +28,10 @@
+@@ -29,6 +29,16 @@
  
  namespace android {
  
++GraphicBuffer::BufferState::BufferState(uint64_t bufferId)
++    : id(bufferId), generationNumber(0), transportNumFds(0),
++      transportNumInts(0) {}
++
++GraphicBuffer::BufferState::~BufferState() = default;
++
 +#if defined(__arm__) && !defined(__LP64__)
 +static_assert(sizeof(GraphicBuffer) == 120, "Stock Tegra GraphicBuffer allocation ABI");
 +#endif
@@ -12,7 +40,7 @@ diff --git a/libs/ui/GraphicBuffer.cpp b/libs/ui/GraphicBuffer.cpp
  // ===========================================================================
  // Buffer and implementation of ANativeWindowBuffer
  // ===========================================================================
-@@ -45,7 +49,7 @@
+@@ -46,7 +56,7 @@ sp<GraphicBuffer> GraphicBuffer::from(ANativeWindowBuffer* anwb) {
  
  GraphicBuffer::GraphicBuffer()
      : BASE(), mOwner(ownData), mBufferMapper(GraphicBufferMapper::get()),
@@ -21,8 +49,8 @@ diff --git a/libs/ui/GraphicBuffer.cpp b/libs/ui/GraphicBuffer.cpp
  {
      width  =
      height =
-@@ -82,6 +86,24 @@
- {
+@@ -73,6 +83,24 @@ GraphicBuffer::GraphicBuffer(uint32_t inWidth, uint32_t inHeight,
+             usage, std::move(requestorName));
  }
  
 +GraphicBuffer::GraphicBuffer(uint32_t inWidth, uint32_t inHeight,
@@ -43,18 +71,10 @@ diff --git a/libs/ui/GraphicBuffer.cpp b/libs/ui/GraphicBuffer.cpp
 +    mBufferState->wrappedBuffer = buffer;
 +}
 +
- GraphicBuffer::GraphicBuffer(const native_handle_t* handle,
-         HandleWrapMethod method, uint32_t width, uint32_t height,
-         PixelFormat format, uint32_t layerCount,
-@@ -109,6 +131,7 @@
-         allocator.free(handle);
-     }
-     handle = NULL;
-+    mBufferState->wrappedBuffer.clear();
- }
- 
- status_t GraphicBuffer::initCheck() const {
-@@ -167,7 +190,7 @@
+ // deprecated
+ GraphicBuffer::GraphicBuffer(uint32_t inWidth, uint32_t inHeight,
+         PixelFormat inFormat, uint32_t inLayerCount, uint32_t inUsage,
+@@ -168,10 +196,10 @@ status_t GraphicBuffer::initWithSize(uint32_t inWidth, uint32_t inHeight,
      GraphicBufferAllocator& allocator = GraphicBufferAllocator::get();
      uint32_t outStride = 0;
      status_t err = allocator.allocate(inWidth, inHeight, inFormat, inLayerCount,
@@ -62,8 +82,35 @@ diff --git a/libs/ui/GraphicBuffer.cpp b/libs/ui/GraphicBuffer.cpp
 +            inUsage, &handle, &outStride, mBufferState->id,
              std::move(requestorName));
      if (err == NO_ERROR) {
+-        mBufferMapper.getTransportSize(handle, &mTransportNumFds, &mTransportNumInts);
++        mBufferMapper.getTransportSize(handle, &mBufferState->transportNumFds, &mBufferState->transportNumInts);
+ 
          width = static_cast<int>(inWidth);
-@@ -345,9 +368,9 @@
+         height = static_cast<int>(inHeight);
+@@ -216,7 +244,7 @@ status_t GraphicBuffer::initWithHandle(const native_handle_t* handle,
+         }
+ 
+         handle = importedHandle;
+-        mBufferMapper.getTransportSize(handle, &mTransportNumFds, &mTransportNumInts);
++        mBufferMapper.getTransportSize(handle, &mBufferState->transportNumFds, &mBufferState->transportNumInts);
+     }
+ 
+     ANativeWindowBuffer::handle = handle;
+@@ -328,11 +356,11 @@ status_t GraphicBuffer::unlockAsync(int *fenceFd)
+ }
+ 
+ size_t GraphicBuffer::getFlattenedSize() const {
+-    return static_cast<size_t>(13 + (handle ? mTransportNumInts : 0)) * sizeof(int);
++    return static_cast<size_t>(13 + (handle ? mBufferState->transportNumInts : 0)) * sizeof(int);
+ }
+ 
+ size_t GraphicBuffer::getFdCount() const {
+-    return static_cast<size_t>(handle ? mTransportNumFds : 0);
++    return static_cast<size_t>(handle ? mBufferState->transportNumFds : 0);
+ }
+ 
+ status_t GraphicBuffer::flatten(void*& buffer, size_t& size, int*& fds, size_t& count) const {
+@@ -350,26 +378,26 @@ status_t GraphicBuffer::flatten(void*& buffer, size_t& size, int*& fds, size_t&
      buf[4] = format;
      buf[5] = static_cast<int32_t>(layerCount);
      buf[6] = int(usage); // low 32-bits
@@ -76,33 +123,81 @@ diff --git a/libs/ui/GraphicBuffer.cpp b/libs/ui/GraphicBuffer.cpp
      buf[10] = 0;
      buf[11] = 0;
      buf[12] = int(usage >> 32); // high 32-bits
-@@ -452,10 +475,10 @@
+ 
+     if (handle) {
+-        buf[10] = int32_t(mTransportNumFds);
+-        buf[11] = int32_t(mTransportNumInts);
+-        memcpy(fds, handle->data, static_cast<size_t>(mTransportNumFds) * sizeof(int));
++        buf[10] = int32_t(mBufferState->transportNumFds);
++        buf[11] = int32_t(mBufferState->transportNumInts);
++        memcpy(fds, handle->data, static_cast<size_t>(mBufferState->transportNumFds) * sizeof(int));
+         memcpy(buf + 13, handle->data + handle->numFds,
+-                static_cast<size_t>(mTransportNumInts) * sizeof(int));
++                static_cast<size_t>(mBufferState->transportNumInts) * sizeof(int));
+     }
+ 
+     buffer = static_cast<void*>(static_cast<uint8_t*>(buffer) + sizeNeeded);
+     size -= sizeNeeded;
+     if (handle) {
+-        fds += mTransportNumFds;
+-        count -= static_cast<size_t>(mTransportNumFds);
++        fds += mBufferState->transportNumFds;
++        count -= static_cast<size_t>(mBufferState->transportNumFds);
+     }
+ 
+     return NO_ERROR;
+@@ -457,10 +485,10 @@ status_t GraphicBuffer::unflatten(
          handle = NULL;
      }
  
 -    mId = static_cast<uint64_t>(buf[7]) << 32;
 -    mId |= static_cast<uint32_t>(buf[8]);
--
--    mGenerationNumber = static_cast<uint32_t>(buf[9]);
 +    mBufferState->id = static_cast<uint64_t>(buf[7]) << 32;
 +    mBufferState->id |= static_cast<uint32_t>(buf[8]);
-+
+ 
+-    mGenerationNumber = static_cast<uint32_t>(buf[9]);
 +    mBufferState->generationNumber = static_cast<uint32_t>(buf[9]);
  
      mOwner = ownHandle;
  
+@@ -480,7 +508,7 @@ status_t GraphicBuffer::unflatten(
+         native_handle_close(handle);
+         native_handle_delete(const_cast<native_handle_t*>(handle));
+         handle = importedHandle;
+-        mBufferMapper.getTransportSize(handle, &mTransportNumFds, &mTransportNumInts);
++        mBufferMapper.getTransportSize(handle, &mBufferState->transportNumFds, &mBufferState->transportNumInts);
+     }
+ 
+     buffer = static_cast<void const*>(static_cast<uint8_t const*>(buffer) + sizeNeeded);
+@@ -492,7 +520,7 @@ status_t GraphicBuffer::unflatten(
+ }
+ 
+ bool GraphicBuffer::isDetachedBuffer() const {
+-    return mDetachedBufferHandle && mDetachedBufferHandle->isValid();
++    return mBufferState->detachedBufferHandle && mBufferState->detachedBufferHandle->isValid();
+ }
+ 
+ status_t GraphicBuffer::setDetachedBufferHandle(std::unique_ptr<DetachedBufferHandle> channel) {
+@@ -501,12 +529,12 @@ status_t GraphicBuffer::setDetachedBufferHandle(std::unique_ptr<DetachedBufferHa
+               "GraphicBuffer. Replacing the old one.");
+     }
+ 
+-    mDetachedBufferHandle = std::move(channel);
++    mBufferState->detachedBufferHandle = std::move(channel);
+     return NO_ERROR;
+ }
+ 
+ std::unique_ptr<DetachedBufferHandle> GraphicBuffer::takeDetachedBufferHandle() {
+-    return std::move(mDetachedBufferHandle);
++    return std::move(mBufferState->detachedBufferHandle);
+ }
+ 
+ // ---------------------------------------------------------------------------
 diff --git a/libs/ui/include/ui/GraphicBuffer.h b/libs/ui/include/ui/GraphicBuffer.h
+index cc38982e6..853fe6d28 100644
 --- a/libs/ui/include/ui/GraphicBuffer.h
 +++ b/libs/ui/include/ui/GraphicBuffer.h
-@@ -20,6 +20,7 @@
- #include <stdint.h>
- #include <sys/types.h>
- 
-+#include <memory>
- #include <string>
- 
- #include <ui/ANativeObjectBase.h>
-@@ -135,6 +136,12 @@
+@@ -136,6 +136,12 @@ public:
      GraphicBuffer(uint32_t inWidth, uint32_t inHeight, PixelFormat inFormat,
              uint32_t inUsage, std::string requestorName = "<Unknown>");
  
@@ -115,15 +210,14 @@ diff --git a/libs/ui/include/ui/GraphicBuffer.h b/libs/ui/include/ui/GraphicBuff
      // return status
      status_t initCheck() const;
  
-@@ -145,11 +152,11 @@
+@@ -146,11 +152,11 @@ public:
      PixelFormat getPixelFormat() const  { return format; }
      uint32_t getLayerCount() const      { return static_cast<uint32_t>(layerCount); }
      Rect getBounds() const              { return Rect(width, height); }
 -    uint64_t getId() const              { return mId; }
--
--    uint32_t getGenerationNumber() const { return mGenerationNumber; }
 +    uint64_t getId() const              { return mBufferState->id; }
-+
+ 
+-    uint32_t getGenerationNumber() const { return mGenerationNumber; }
 +    uint32_t getGenerationNumber() const { return mBufferState->generationNumber; }
      void setGenerationNumber(uint32_t generation) {
 -        mGenerationNumber = generation;
@@ -131,22 +225,38 @@ diff --git a/libs/ui/include/ui/GraphicBuffer.h b/libs/ui/include/ui/GraphicBuff
      }
  
      // This function is privileged.  It requires access to the allocator
-@@ -230,12 +237,21 @@
-     GraphicBufferMapper& mBufferMapper;
+@@ -237,26 +243,31 @@ private:
      ssize_t mInitCheck;
  
+     // numbers of fds/ints in native_handle_t to flatten
+-    uint32_t mTransportNumFds;
+-    uint32_t mTransportNumInts;
+-
 -    uint64_t mId;
 -
 -    // Stores the generation number of this buffer. If this number does not
 -    // match the BufferQueue's internal generation number (set through
 -    // IGBP::setGenerationNumber), attempts to attach the buffer will fail.
 -    uint32_t mGenerationNumber;
+-
+-    // Stores a BufferHub handle that can be used to re-attach this GraphicBuffer back into a
+-    // BufferHub producer/consumer set. In terms of GraphicBuffer's relationship with BufferHub,
+-    // there are three different modes:
+-    // 1. Legacy mode: GraphicBuffer is not backed by BufferHub and mDetachedBufferHandle must be
+-    //    invalid.
+-    // 2. Detached mode: GraphicBuffer is backed by BufferHub, but not part of a producer/consumer
+-    //    set. In this mode, mDetachedBufferHandle must be valid.
+-    // 3. Attached mode: GraphicBuffer is backed by BufferHub and it's part of a producer/consumer
+-    //    set. In this mode, mDetachedBufferHandle must be invalid.
+-    std::unique_ptr<DetachedBufferHandle> mDetachedBufferHandle;
++
 +    // Stock 32-bit Tegra libraries allocate only 120 bytes for GraphicBuffer.
-+    // Keep the post-KitKat metadata out of line so legacy construction cannot
++    // Pie adds the buffer id, generation and a BufferHub handle after the Oreo
++    // layout. Keep that metadata out of line so legacy construction cannot
 +    // overwrite the caller's allocation. The native buffer layout is unchanged.
 +    struct BufferState {
-+        explicit BufferState(uint64_t bufferId)
-+            : id(bufferId), generationNumber(0) {}
++        explicit BufferState(uint64_t bufferId);
++        ~BufferState();
 +
 +        // Keep a wrapped native buffer alive until its wrapper is released.
 +        sp<ANativeWindowBuffer> wrappedBuffer;
@@ -154,28 +264,16 @@ diff --git a/libs/ui/include/ui/GraphicBuffer.h b/libs/ui/include/ui/GraphicBuff
 +
 +        // Must match BufferQueue's generation when attaching this buffer.
 +        uint32_t generationNumber;
++        uint32_t transportNumFds;
++        uint32_t transportNumInts;
++
++        // BufferHub relationship, moved here from the object tail:
++        // 1. Legacy mode: not backed by BufferHub, so this handle is invalid.
++        // 2. Detached mode: backed by BufferHub but not in a producer/consumer set.
++        // 3. Attached mode: part of a producer/consumer set, so this handle is invalid.
++        std::unique_ptr<DetachedBufferHandle> detachedBufferHandle;
 +    };
 +    std::unique_ptr<BufferState> mBufferState;
  };
  
  }; // namespace android
-diff --git a/libs/gui/Surface.cpp b/libs/gui/Surface.cpp
---- a/libs/gui/Surface.cpp
-+++ b/libs/gui/Surface.cpp
-@@ -1281,13 +1281,13 @@
-     }
- 
-     sp<GraphicBuffer> graphicBuffer(static_cast<GraphicBuffer*>(buffer));
--    uint32_t priorGeneration = graphicBuffer->mGenerationNumber;
--    graphicBuffer->mGenerationNumber = mGenerationNumber;
-+    uint32_t priorGeneration = graphicBuffer->getGenerationNumber();
-+    graphicBuffer->setGenerationNumber(mGenerationNumber);
-     int32_t attachedSlot = -1;
-     status_t result = mGraphicBufferProducer->attachBuffer(&attachedSlot, graphicBuffer);
-     if (result != NO_ERROR) {
-         ALOGE("attachBuffer: IGraphicBufferProducer call failed (%d)", result);
--        graphicBuffer->mGenerationNumber = priorGeneration;
-+        graphicBuffer->setGenerationNumber(priorGeneration);
-         return result;
-     }
-     if (mReportRemovedBuffers && (mSlots[attachedSlot].buffer != nullptr)) {
