@@ -1,0 +1,193 @@
+--- a/libprocessgroup/profiles/cgroups.json
++++ b/libprocessgroup/profiles/cgroups.json
+@@ -1,12 +1,5 @@
+ {
+   "Cgroups": [
+-    {
+-      "Controller": "blkio",
+-      "Path": "/dev/blkio",
+-      "Mode": "0755",
+-      "UID": "system",
+-      "GID": "system"
+-    },
+     {
+       "Controller": "cpu",
+       "Path": "/dev/cpuctl",
+@@ -20,31 +13,11 @@
+       "Mode": "0555"
+     },
+     {
+-      "Controller": "cpuset",
+-      "Path": "/dev/cpuset",
+-      "Mode": "0755",
+-      "UID": "system",
+-      "GID": "system"
+-    },
+-    {
+       "Controller": "memory",
+       "Path": "/dev/memcg",
+       "Mode": "0700",
+       "UID": "root",
+       "GID": "system"
+-    },
+-    {
+-      "Controller": "schedtune",
+-      "Path": "/dev/stune",
+-      "Mode": "0755",
+-      "UID": "system",
+-      "GID": "system"
+     }
+-  ],
+-  "Cgroups2": {
+-    "Path": "/dev/cg2_bpf",
+-    "Mode": "0600",
+-    "UID": "root",
+-    "GID": "root"
+-  }
++  ]
+ }
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -65,40 +65,10 @@
+     symlink /system/vendor /vendor
+ 
+     # Create energy-aware scheduler tuning nodes
+-    mkdir /dev/stune/foreground
+-    mkdir /dev/stune/background
+-    mkdir /dev/stune/top-app
+-    mkdir /dev/stune/rt
+-    chown system system /dev/stune
+-    chown system system /dev/stune/foreground
+-    chown system system /dev/stune/background
+-    chown system system /dev/stune/top-app
+-    chown system system /dev/stune/rt
+-    chown system system /dev/stune/tasks
+-    chown system system /dev/stune/foreground/tasks
+-    chown system system /dev/stune/background/tasks
+-    chown system system /dev/stune/top-app/tasks
+-    chown system system /dev/stune/rt/tasks
+-    chmod 0664 /dev/stune/tasks
+-    chmod 0664 /dev/stune/foreground/tasks
+-    chmod 0664 /dev/stune/background/tasks
+-    chmod 0664 /dev/stune/top-app/tasks
+-    chmod 0664 /dev/stune/rt/tasks
+ 
+     # Create blkio group and apply initial settings.
+     # This feature needs kernel to support it, and the
+     # device's init.rc must actually set the correct values.
+-    mkdir /dev/blkio/background
+-    chown system system /dev/blkio
+-    chown system system /dev/blkio/background
+-    chown system system /dev/blkio/tasks
+-    chown system system /dev/blkio/background/tasks
+-    chmod 0664 /dev/blkio/tasks
+-    chmod 0664 /dev/blkio/background/tasks
+-    write /dev/blkio/blkio.weight 1000
+-    write /dev/blkio/background/blkio.weight 200
+-    write /dev/blkio/blkio.group_idle 0
+-    write /dev/blkio/background/blkio.group_idle 0
+ 
+     restorecon_recursive /mnt
+ 
+@@ -182,53 +152,19 @@
+     # sets up initial cpusets for ActivityManager
+     # this ensures that the cpusets are present and usable, but the device's
+     # init.rc must actually set the correct cpus
+-    mkdir /dev/cpuset/foreground
+-    copy /dev/cpuset/cpus /dev/cpuset/foreground/cpus
+-    copy /dev/cpuset/mems /dev/cpuset/foreground/mems
+-    mkdir /dev/cpuset/background
+-    copy /dev/cpuset/cpus /dev/cpuset/background/cpus
+-    copy /dev/cpuset/mems /dev/cpuset/background/mems
+ 
+     # system-background is for system tasks that should only run on
+     # little cores, not on bigs
+     # to be used only by init, so don't change system-bg permissions
+-    mkdir /dev/cpuset/system-background
+-    copy /dev/cpuset/cpus /dev/cpuset/system-background/cpus
+-    copy /dev/cpuset/mems /dev/cpuset/system-background/mems
+ 
+     # restricted is for system tasks that are being throttled
+     # due to screen off.
+-    mkdir /dev/cpuset/restricted
+-    copy /dev/cpuset/cpus /dev/cpuset/restricted/cpus
+-    copy /dev/cpuset/mems /dev/cpuset/restricted/mems
+-
+-    mkdir /dev/cpuset/top-app
+-    copy /dev/cpuset/cpus /dev/cpuset/top-app/cpus
+-    copy /dev/cpuset/mems /dev/cpuset/top-app/mems
++
+ 
+     # change permissions for all cpusets we'll touch at runtime
+-    chown system system /dev/cpuset
+-    chown system system /dev/cpuset/foreground
+-    chown system system /dev/cpuset/background
+-    chown system system /dev/cpuset/system-background
+-    chown system system /dev/cpuset/top-app
+-    chown system system /dev/cpuset/restricted
+-    chown system system /dev/cpuset/tasks
+-    chown system system /dev/cpuset/foreground/tasks
+-    chown system system /dev/cpuset/background/tasks
+-    chown system system /dev/cpuset/system-background/tasks
+-    chown system system /dev/cpuset/top-app/tasks
+-    chown system system /dev/cpuset/restricted/tasks
+ 
+     # set system-background to 0775 so SurfaceFlinger can touch it
+-    chmod 0775 /dev/cpuset/system-background
+-
+-    chmod 0664 /dev/cpuset/foreground/tasks
+-    chmod 0664 /dev/cpuset/background/tasks
+-    chmod 0664 /dev/cpuset/system-background/tasks
+-    chmod 0664 /dev/cpuset/top-app/tasks
+-    chmod 0664 /dev/cpuset/restricted/tasks
+-    chmod 0664 /dev/cpuset/tasks
++
+ 
+     # make the PSI monitor accessible to others
+     chown system system /proc/pressure/memory
+@@ -285,8 +221,6 @@
+     # This is used by Bionic to select optimized routines.
+     write /dev/cpu_variant:${ro.bionic.arch} ${ro.bionic.cpu_variant}
+     chmod 0444 /dev/cpu_variant:${ro.bionic.arch}
+-    write /dev/cpu_variant:${ro.bionic.2nd_arch} ${ro.bionic.2nd_cpu_variant}
+-    chmod 0444 /dev/cpu_variant:${ro.bionic.2nd_arch}
+ 
+     # Allow system processes to read / write power state.
+     chown system system /sys/power/state
+@@ -690,13 +624,10 @@
+     # to avoid power consumption when system becomes mostly idle. Be careful
+     # to make it too large, since it may bring userdata loss, if they
+     # are not aware of using fsync()/sync() to prepare sudden power-cut.
+-    write /sys/fs/f2fs/${dev.mnt.blk.data}/cp_interval 200
+-    write /sys/fs/f2fs/${dev.mnt.blk.data}/gc_urgent_sleep_time 50
+ 
+     # limit discard size to 128MB in order to avoid long IO latency
+     # for filesystem tuning first (dm or sda)
+     # Note that, if dm-<num> is used, sda/mmcblk0 should be tuned in vendor/init.rc
+-    write /sys/devices/virtual/block/${dev.mnt.blk.data}/queue/discard_max_bytes 134217728
+ 
+     # Permissions for System Server and daemons.
+     chown radio system /sys/android_power/state
+--- a/init/service.cpp
++++ b/init/service.cpp
+@@ -1032,11 +1032,18 @@
+                             StringPrintf("%s%stasks", cpuset_path.c_str(), default_cpuset.c_str()));
+                 }
+             }
+-        } else {
+-            LOG(ERROR) << "cpuset cgroup controller is not mounted!";
+         }
+         std::string pid_str = std::to_string(getpid());
+         for (const auto& file : writepid_files_) {
++            // Legacy kernels may not implement these optional controllers.
++            // Retain errors for a missing group on a configured controller.
++            std::string controller_path;
++            if ((StartsWith(file, "/dev/cpuset/") &&
++                 !CgroupGetControllerPath("cpuset", &controller_path)) ||
++                (StartsWith(file, "/dev/stune/") &&
++                 !CgroupGetControllerPath("schedtune", &controller_path))) {
++                continue;
++            }
+             if (!WriteStringToFile(pid_str, file)) {
+                 PLOG(ERROR) << "couldn't write " << pid_str << " to " << file;
+             }

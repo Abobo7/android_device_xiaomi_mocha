@@ -15,10 +15,10 @@
 
 # qvs: this file is used by qvs applications to have
 # permission to run on boot.
-type qvs_exec, file_type, exec_type;
+type qvs_exec, file_type, exec_type, system_file_type;
 
 userdebug_or_eng(`
-  type qvs, domain;
+  type qvs, domain, coredomain;
   permissive qvs;
   init_daemon_domain(qvs)
   #qvs entry file is a shell script

@@ -1,0 +1,30 @@
+--- a/ashmemd_client.cpp
++++ b/ashmemd_client.cpp
+@@ -17,6 +17,7 @@
+ #include <android-base/logging.h>
+ #include <android/ashmemd/IAshmemDeviceService.h>
+ #include <binder/IServiceManager.h>
++#include <mutex>
+ #include <cutils/android_filesystem_config.h>
+ 
+ using android::IBinder;
+@@ -48,12 +49,17 @@
+         return nullptr;
+     }
+     sp<IServiceManager> sm = android::defaultServiceManager();
+-    sp<IBinder> binder = sm->checkService(String16("ashmem_device_service"));
++    sp<IBinder> binder = sm->getService(String16("ashmem_device_service"));
+     return interface_cast<IAshmemDeviceService>(binder);
+ }
+ 
+ extern "C" int openAshmemdFd() {
+-    static sp<IAshmemDeviceService> ashmemService = getAshmemService();
++    static std::mutex serviceMutex;
++    static sp<IAshmemDeviceService> ashmemService;
++    std::lock_guard<std::mutex> lock(serviceMutex);
++    if (!ashmemService || !IInterface::asBinder(ashmemService)->isBinderAlive()) {
++        ashmemService = getAshmemService();
++    }
+     if (!ashmemService) {
+         LOG(ERROR) << "Failed to get IAshmemDeviceService.";
+         return -1;

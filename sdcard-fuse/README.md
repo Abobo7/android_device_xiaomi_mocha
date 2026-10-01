@@ -12,5 +12,10 @@ Pie removed userspace FUSE from sdcard. Mocha's stock 3.10 kernel has FUSE but
 no sdcardfs/esdfs. The standard Pie sdcard binary delegates to this daemon only
 when ro.sys.legacy_fuse=true. ro.sys.sdcardfs=false selects its FUSE backend.
 Vold still owns mounting/unmounting and process lifetime. Data is not migrated.
-The only source adaptation is accepting Pie's sdcardfs-only -i option; userspace
-FUSE retains its existing multiuser/package-derived permission handling.
+Accepts the sdcardfs-only -i option; userspace FUSE retains its existing
+multiuser/package-derived permission handling.
+
+Android 10 adaptation: accepts -o for per-user OBB directories; exposes the Q
+runtime/full view with the same permission mask as platform sdcardfs; shares
+inode notifications among all four views. The matching system/vold patch keeps
+the userspace server alive after mount and reaps it on unmount, as in Pie.

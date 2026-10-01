@@ -1,9 +1,53 @@
 # Platform compatibility for stock mocha blobs
 
+## Published baseline verification (2026-10-01)
+
+`BASELINES.json` records each patched platform repository's clean commit and
+the SHA-256 of each patch in application order. The publication check replayed
+these patches against an isolated Git index at each clean commit and verified
+the resulting source files against the working tree. This check does not alter
+platform source or substitute for the recorded runtime validation.
+
+Run `apply-platform-patches.sh` after repo sync. It also verifies and restores
+the validated WebView prebuilt via `prepare-webview.sh`. The original hardware
+blobs remain unchanged.
+
+
+## LineageOS 17.1 (Android 10)
+
+The active patches in this branch target Android 10. Historical 16.0 validation
+below explains their hardware requirements; it does not establish 17.1 runtime
+acceptance. Regenerate patches against platform HEAD (including staged changes),
+not against the index: both the clean application and the already-applied path
+must work.
+
+The GraphicBuffer patch preserves the two legacy constructors and the 120-byte
+ARM allocation ABI. Q buffer IDs, transport counts, death callbacks and the
+BufferHub unique_ptr all live in private heap state. The wrapped native buffer
+keeps its strong reference until teardown. Surface uses generation accessors.
+
+The Parcel patch preserves the 48-byte ARM allocation used by stock libnvcpl.
+Q's work-source state, ashmem accounting and owner cookie live in private heap
+state. Binder wire data and public methods remain unchanged. All platform
+consumers must be rebuilt with the patched header; replacing libbinder alone
+is not a complete update. The native canary test also covers work-source reset
+and ashmem lifecycle.
+
+HWUI in Q already enables fPreferExternalImagesOverES3, so the old Skia external
+texture workaround is unnecessary; the shader-language disk-cache key remains.
+Q also removed earlyInitEGL. EGL trim resilience, forced client composition,
+gralloc handle references, Fence exports and camera Binder/linker compatibility
+remain required.
+
+FUSE and Snap each contain one copy of their compatibility change. The UIM helper
+is imported into device/xiaomi/mocha/brcm-uim-sysfs with source provenance, without
+an FMRadio app dependency. Audio uses audio_policy_configuration.xml plus the
+upstream A2DP, USB and volume XML files; the old .conf is only migration reference.
+
+
 Run `bash device/xiaomi/mocha/apply-platform-patches.sh` from the active LineageOS
 source tree before building. The script verifies each patch before applying
-it and recognizes patches that are already applied. The same set is
-used with the 16.0 tree.
+it and recognizes patches that are already applied. Use the patch set from the branch matching the Android source version.
 
 Bionic Fortify normally checks for O_TMPFILE when validating open flags. The
 mocha kernel exports older UAPI headers that omit that flag, so the guard

@@ -69,4 +69,4 @@ allow surfaceflinger hwc_data_file:dir {create_dir_perms};
 allow surfaceflinger sysfs_gpu:file r_file_perms;
 
 # Allow SF access to VRR properties
-allow surfaceflinger vrr_prop:file { r_file_perms };
+get_prop(surfaceflinger, vrr_prop)

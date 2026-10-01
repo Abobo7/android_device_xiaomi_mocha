@@ -16,5 +16,5 @@ r_dir_file(mediacodec, sysfs)
 r_dir_file(mediacodec, sysfs_soc)
 
 allow mediacodec power_service:service_manager find;
-allow mediacodec camera_device:chr_file rw_file_perms;
+# Camera device access belongs to hal_camera_default, not the codec service.
 

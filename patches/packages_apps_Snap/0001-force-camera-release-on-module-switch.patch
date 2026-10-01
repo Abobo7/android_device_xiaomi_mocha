@@ -1,16 +1,13 @@
 diff --git a/src/com/android/camera/CameraActivity.java b/src/com/android/camera/CameraActivity.java
-index 74e1a7f..0d5c00d 100644
+index 4fa49b9..e58ca61 100755
 --- a/src/com/android/camera/CameraActivity.java
 +++ b/src/com/android/camera/CameraActivity.java
-@@ -2160,7 +2160,14 @@ public class CameraActivity extends Activity
+@@ -2192,7 +2192,11 @@ public class CameraActivity extends Activity
                  return;
              }
          }
 -        CameraHolder.instance().keep();
-+        // The stock NVIDIA HAL cannot switch the IMX179 sensor mode while the
-+        // camera device stays open. Opening the video module changes the sensor
-+        // mode mid-stream, which wedges the VI/VIC pipeline; force a real close
-+        // so the next module gets a freshly powered sensor.
++        // A video mode transition needs a fully closed stock NVIDIA sensor.
 +        if (moduleIndex != ModuleSwitcher.VIDEO_MODULE_INDEX &&
 +                mCurrentModuleIndex != ModuleSwitcher.VIDEO_MODULE_INDEX) {
 +            CameraHolder.instance().keep();

@@ -1,0 +1,43 @@
+--- a/apexd/apex_database.cpp
++++ b/apexd/apex_database.cpp
+@@ -29,6 +29,9 @@
+ #include <android-base/strings.h>
+ 
+ #include <filesystem>
++#include <unistd.h>
++#include <cerrno>
++#include <cstring>
+ #include <fstream>
+ #include <string>
+ #include <unordered_map>
+@@ -152,6 +155,8 @@
+   inode_map map;
+ 
+   for (const auto& dir : kApexPackageBuiltinDirs) {
++    if (dir != kApexPackageSystemDir &&
++        access(dir.c_str(), F_OK) != 0 && errno == ENOENT) continue;
+     auto status = WalkDir(dir, [&](const fs::directory_entry& entry) {
+       const auto& path = entry.path();
+       if (isFlattenedApex(path)) {
+--- a/apexd/apexd.cpp
++++ b/apexd/apexd.cpp
+@@ -1253,6 +1253,8 @@
+ std::vector<ApexFile> getFactoryPackages() {
+   std::vector<ApexFile> ret;
+   for (const auto& dir : kApexPackageBuiltinDirs) {
++    if (dir != kApexPackageSystemDir &&
++        access(dir.c_str(), F_OK) != 0 && errno == ENOENT) continue;
+     auto apex_files = FindApexFilesByName(dir, /* include_dirs=*/false);
+     if (!apex_files.Ok()) {
+       LOG(ERROR) << apex_files.ErrorMessage();
+@@ -1311,6 +1313,10 @@
+   LOG(INFO) << "Scanning " << apex_package_dir << " looking for APEX packages.";
+ 
+   const bool scanBuiltinApexes = isPathForBuiltinApexes(apex_package_dir);
++  if (scanBuiltinApexes && strcmp(apex_package_dir, kApexPackageSystemDir) != 0 &&
++      access(apex_package_dir, F_OK) != 0 && errno == ENOENT) {
++    return Status::Success();
++  }
+   StatusOr<std::vector<std::string>> scan =
+       FindApexFilesByName(apex_package_dir, scanBuiltinApexes);
+   if (!scan.Ok()) {

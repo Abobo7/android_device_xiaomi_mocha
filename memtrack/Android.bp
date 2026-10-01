@@ -1,0 +1,10 @@
+cc_binary {
+    name: "android.hardware.memtrack@1.0-service-mocha",
+    vendor: true,
+    relative_install_path: "hw",
+    srcs: ["service.cpp"],
+    shared_libs: ["liblog", "libhidlbase", "libhidltransport", "libutils", "android.hardware.memtrack@1.0"],
+    init_rc: ["memtrack.rc"],
+    vintf_fragments: ["memtrack.xml"],
+    cflags: ["-Wall", "-Wextra", "-Werror"],
+}

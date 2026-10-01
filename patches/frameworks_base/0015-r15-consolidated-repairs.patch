@@ -1,0 +1,102 @@
+--- a/core/jni/android_os_Debug.cpp
++++ b/core/jni/android_os_Debug.cpp
+@@ -565,6 +565,8 @@
+     std::vector<uint64_t> mem(MEMINFO_COUNT);
+     std::vector<std::string> tags(::android::meminfo::SysMemInfo::kDefaultSysMemInfoTags);
+     tags.insert(tags.begin() + MEMINFO_ZRAM_TOTAL, "Zram:");
++    // Tegra 3.10's VmallocUsed is a VA span, including IO remaps, not physical RAM.
++    tags[MEMINFO_VMALLOC_USED] = "VmallocUsedPhys:";
+     ::android::meminfo::SysMemInfo smi;
+     if (!smi.ReadMemInfo(tags, &mem)) {
+         jniThrowRuntimeException(env, "SysMemInfo read failed");
+@@ -575,6 +577,7 @@
+     if (outArray != NULL) {
+         outLen = MEMINFO_COUNT;
+         for (int i = 0; i < outLen; i++) {
++            // vmallocinfo counts backing pages; old VmallocUsed also includes IO mappings.
+             if (i == MEMINFO_VMALLOC_USED && mem[i] == 0) {
+                 outArray[i] = smi.ReadVmallocInfo() / 1024;
+                 continue;
+--- a/libs/hwui/renderthread/RenderThread.cpp
++++ b/libs/hwui/renderthread/RenderThread.cpp
+@@ -43,7 +43,6 @@
+ #include <utils/Condition.h>
+ #include <utils/Log.h>
+ #include <utils/Mutex.h>
+-#include <thread>
+ 
+ namespace android {
+ namespace uirenderer {
+@@ -425,8 +424,11 @@
+ void RenderThread::preload() {
+     // EGL driver is always preloaded only if HWUI renders with GL.
+     if (Properties::getRenderPipelineType() == RenderPipelineType::SkiaGL) {
+-        std::thread eglInitThread([]() { eglGetDisplay(EGL_DEFAULT_DISPLAY); });
+-        eglInitThread.detach();
++        // RenderProxy already posts preload to this thread. Keep the driver's
++        // TLS alive on the thread that will initialize and use the display.
++        // A detached preload thread can tear down legacy EGL global state
++        // concurrently with the first frame's eglGetDisplay/eglInitialize.
++        eglGetDisplay(EGL_DEFAULT_DISPLAY);
+     } else {
+         requireVkContext();
+     }
+--- a/services/core/java/com/android/server/pm/PackageManagerService.java
++++ b/services/core/java/com/android/server/pm/PackageManagerService.java
+@@ -253,6 +253,7 @@
+ import android.stats.storage.StorageEnums;
+ import android.system.ErrnoException;
+ import android.system.Os;
++import android.system.OsConstants;
+ import android.text.TextUtils;
+ import android.text.format.DateUtils;
+ import android.util.ArrayMap;
+@@ -23302,6 +23303,14 @@
+ 
+             final File[] files = FileUtils.listFilesOrEmpty(ceDir);
+             for (File file : files) {
++                try {
++                    if (OsConstants.S_ISSOCK(Os.lstat(file.getPath()).st_mode)) {
++                        continue; // Legacy system-service sockets are not app data directories.
++                    }
++                } catch (ErrnoException e) {
++                    if (e.errno == OsConstants.ENOENT) continue;
++                    Slog.w(TAG, "Unable to inspect app data entry " + file, e);
++                }
+                 final String packageName = file.getName();
+                 try {
+                     assertPackageKnownAndInstalled(volumeUuid, packageName, userId);
+@@ -23319,6 +23328,14 @@
+         if ((flags & StorageManager.FLAG_STORAGE_DE) != 0) {
+             final File[] files = FileUtils.listFilesOrEmpty(deDir);
+             for (File file : files) {
++                try {
++                    if (OsConstants.S_ISSOCK(Os.lstat(file.getPath()).st_mode)) {
++                        continue; // Legacy system-service sockets are not app data directories.
++                    }
++                } catch (ErrnoException e) {
++                    if (e.errno == OsConstants.ENOENT) continue;
++                    Slog.w(TAG, "Unable to inspect app data entry " + file, e);
++                }
+                 final String packageName = file.getName();
+                 try {
+                     assertPackageKnownAndInstalled(volumeUuid, packageName, userId);
+--- a/services/core/java/com/android/server/wm/TaskPersister.java
++++ b/services/core/java/com/android/server/wm/TaskPersister.java
+@@ -474,8 +474,14 @@
+             candidateUserIds = mRecentTasks.usersWithRecentsLoadedLocked();
+         }
+         for (int userId : candidateUserIds) {
+-            removeObsoleteFiles(persistentTaskIds, getUserImagesDir(userId).listFiles());
+-            removeObsoleteFiles(persistentTaskIds, getUserTasksDir(userId).listFiles());
++            final File imagesDir = getUserImagesDir(userId);
++            final File tasksDir = getUserTasksDir(userId);
++            if (imagesDir.exists()) {
++                removeObsoleteFiles(persistentTaskIds, imagesDir.listFiles());
++            }
++            if (tasksDir.exists()) {
++                removeObsoleteFiles(persistentTaskIds, tasksDir.listFiles());
++            }
+         }
+     }
+ 

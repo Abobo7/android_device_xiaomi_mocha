@@ -1,8 +1,8 @@
 diff --git a/libs/gui/Surface.cpp b/libs/gui/Surface.cpp
-index 2de14c884..d857c9a29 100644
+index b822319..028056d 100644
 --- a/libs/gui/Surface.cpp
 +++ b/libs/gui/Surface.cpp
-@@ -1316,13 +1316,13 @@ int Surface::attachBuffer(ANativeWindowBuffer* buffer)
+@@ -1409,13 +1409,13 @@ int Surface::attachBuffer(ANativeWindowBuffer* buffer)
      }
  
      sp<GraphicBuffer> graphicBuffer(static_cast<GraphicBuffer*>(buffer));
@@ -20,17 +20,16 @@ index 2de14c884..d857c9a29 100644
      }
      if (mReportRemovedBuffers && (mSlots[attachedSlot].buffer != nullptr)) {
 diff --git a/libs/ui/GraphicBuffer.cpp b/libs/ui/GraphicBuffer.cpp
-index 7670ac6fb..492ad652e 100644
+index 3fc6a2d..b4df104 100644
 --- a/libs/ui/GraphicBuffer.cpp
 +++ b/libs/ui/GraphicBuffer.cpp
-@@ -29,6 +29,16 @@
+@@ -34,6 +34,15 @@
  
  namespace android {
  
-+GraphicBuffer::BufferState::BufferState(uint64_t bufferId)
-+    : id(bufferId), generationNumber(0), transportNumFds(0),
-+      transportNumInts(0) {}
++GraphicBuffer::BufferState::BufferState(uint64_t uniqueId) : id(uniqueId) {}
 +
++// BufferHubBuffer must be complete when destroying its unique_ptr.
 +GraphicBuffer::BufferState::~BufferState() = default;
 +
 +#if defined(__arm__) && !defined(__LP64__)
@@ -40,7 +39,7 @@ index 7670ac6fb..492ad652e 100644
  // ===========================================================================
  // Buffer and implementation of ANativeWindowBuffer
  // ===========================================================================
-@@ -46,7 +56,7 @@ sp<GraphicBuffer> GraphicBuffer::from(ANativeWindowBuffer* anwb) {
+@@ -67,7 +76,7 @@ AHardwareBuffer const* GraphicBuffer::toAHardwareBuffer() const {
  
  GraphicBuffer::GraphicBuffer()
      : BASE(), mOwner(ownData), mBufferMapper(GraphicBufferMapper::get()),
@@ -49,8 +48,8 @@ index 7670ac6fb..492ad652e 100644
  {
      width  =
      height =
-@@ -73,6 +83,24 @@ GraphicBuffer::GraphicBuffer(uint32_t inWidth, uint32_t inHeight,
-             usage, std::move(requestorName));
+@@ -93,6 +102,24 @@ GraphicBuffer::GraphicBuffer(uint32_t inWidth, uint32_t inHeight, PixelFormat in
+                               std::move(requestorName));
  }
  
 +GraphicBuffer::GraphicBuffer(uint32_t inWidth, uint32_t inHeight,
@@ -74,7 +73,29 @@ index 7670ac6fb..492ad652e 100644
  // deprecated
  GraphicBuffer::GraphicBuffer(uint32_t inWidth, uint32_t inHeight,
          PixelFormat inFormat, uint32_t inLayerCount, uint32_t inUsage,
-@@ -168,10 +196,10 @@ status_t GraphicBuffer::initWithSize(uint32_t inWidth, uint32_t inHeight,
+@@ -122,8 +149,8 @@ GraphicBuffer::GraphicBuffer(std::unique_ptr<BufferHubBuffer> buffer) : GraphicB
+                                 buffer->desc().width, buffer->desc().height,
+                                 static_cast<PixelFormat>(buffer->desc().format),
+                                 buffer->desc().layers, buffer->desc().usage, buffer->desc().stride);
+-    mBufferId = buffer->id();
+-    mBufferHubBuffer = std::move(buffer);
++    mBufferState->bufferId = buffer->id();
++    mBufferState->bufferHubBuffer = std::move(buffer);
+ }
+ #endif // LIBUI_IN_VNDK
+ 
+@@ -133,8 +160,8 @@ GraphicBuffer::~GraphicBuffer()
+     if (handle) {
+         free_handle();
+     }
+-    for (auto& [callback, context] : mDeathCallbacks) {
+-        callback(context, mId);
++    for (auto& [callback, context] : mBufferState->deathCallbacks) {
++        callback(context, mBufferState->id);
+     }
+ }
+ 
+@@ -205,10 +232,10 @@ status_t GraphicBuffer::initWithSize(uint32_t inWidth, uint32_t inHeight,
      GraphicBufferAllocator& allocator = GraphicBufferAllocator::get();
      uint32_t outStride = 0;
      status_t err = allocator.allocate(inWidth, inHeight, inFormat, inLayerCount,
@@ -87,30 +108,47 @@ index 7670ac6fb..492ad652e 100644
  
          width = static_cast<int>(inWidth);
          height = static_cast<int>(inHeight);
-@@ -216,7 +244,7 @@ status_t GraphicBuffer::initWithHandle(const native_handle_t* handle,
+@@ -251,7 +278,7 @@ status_t GraphicBuffer::initWithHandle(const native_handle_t* inHandle, HandleWr
          }
  
-         handle = importedHandle;
--        mBufferMapper.getTransportSize(handle, &mTransportNumFds, &mTransportNumInts);
-+        mBufferMapper.getTransportSize(handle, &mBufferState->transportNumFds, &mBufferState->transportNumInts);
+         inHandle = importedHandle;
+-        mBufferMapper.getTransportSize(inHandle, &mTransportNumFds, &mTransportNumInts);
++        mBufferMapper.getTransportSize(inHandle, &mBufferState->transportNumFds, &mBufferState->transportNumInts);
      }
  
-     ANativeWindowBuffer::handle = handle;
-@@ -328,11 +356,11 @@ status_t GraphicBuffer::unlockAsync(int *fenceFd)
- }
+     ANativeWindowBuffer::handle = inHandle;
+@@ -376,25 +403,25 @@ status_t GraphicBuffer::isSupported(uint32_t inWidth, uint32_t inHeight, PixelFo
  
  size_t GraphicBuffer::getFlattenedSize() const {
+ #ifndef LIBUI_IN_VNDK
+-    if (mBufferHubBuffer != nullptr) {
++    if (mBufferState->bufferHubBuffer != nullptr) {
+         return 48;
+     }
+ #endif
 -    return static_cast<size_t>(13 + (handle ? mTransportNumInts : 0)) * sizeof(int);
 +    return static_cast<size_t>(13 + (handle ? mBufferState->transportNumInts : 0)) * sizeof(int);
  }
  
  size_t GraphicBuffer::getFdCount() const {
+ #ifndef LIBUI_IN_VNDK
+-    if (mBufferHubBuffer != nullptr) {
++    if (mBufferState->bufferHubBuffer != nullptr) {
+         return 0;
+     }
+ #endif
 -    return static_cast<size_t>(handle ? mTransportNumFds : 0);
 +    return static_cast<size_t>(handle ? mBufferState->transportNumFds : 0);
  }
  
  status_t GraphicBuffer::flatten(void*& buffer, size_t& size, int*& fds, size_t& count) const {
-@@ -350,26 +378,26 @@ status_t GraphicBuffer::flatten(void*& buffer, size_t& size, int*& fds, size_t&
+ #ifndef LIBUI_IN_VNDK
+-    if (mBufferHubBuffer != nullptr) {
++    if (mBufferState->bufferHubBuffer != nullptr) {
+         return flattenBufferHubBuffer(buffer, size);
+     }
+ #endif
+@@ -412,26 +439,26 @@ status_t GraphicBuffer::flatten(void*& buffer, size_t& size, int*& fds, size_t&
      buf[4] = format;
      buf[5] = static_cast<int32_t>(layerCount);
      buf[6] = int(usage); // low 32-bits
@@ -132,8 +170,8 @@ index 7670ac6fb..492ad652e 100644
 +        buf[11] = int32_t(mBufferState->transportNumInts);
 +        memcpy(fds, handle->data, static_cast<size_t>(mBufferState->transportNumFds) * sizeof(int));
          memcpy(buf + 13, handle->data + handle->numFds,
--                static_cast<size_t>(mTransportNumInts) * sizeof(int));
-+                static_cast<size_t>(mBufferState->transportNumInts) * sizeof(int));
+-               static_cast<size_t>(mTransportNumInts) * sizeof(int));
++               static_cast<size_t>(mBufferState->transportNumInts) * sizeof(int));
      }
  
      buffer = static_cast<void*>(static_cast<uint8_t*>(buffer) + sizeNeeded);
@@ -144,10 +182,10 @@ index 7670ac6fb..492ad652e 100644
 +        fds += mBufferState->transportNumFds;
 +        count -= static_cast<size_t>(mBufferState->transportNumFds);
      }
- 
      return NO_ERROR;
-@@ -457,10 +485,10 @@ status_t GraphicBuffer::unflatten(
-         handle = NULL;
+ }
+@@ -529,10 +556,10 @@ status_t GraphicBuffer::unflatten(void const*& buffer, size_t& size, int const*&
+         handle = nullptr;
      }
  
 -    mId = static_cast<uint64_t>(buf[7]) << 32;
@@ -160,7 +198,7 @@ index 7670ac6fb..492ad652e 100644
  
      mOwner = ownHandle;
  
-@@ -480,7 +508,7 @@ status_t GraphicBuffer::unflatten(
+@@ -552,7 +579,7 @@ status_t GraphicBuffer::unflatten(void const*& buffer, size_t& size, int const*&
          native_handle_close(handle);
          native_handle_delete(const_cast<native_handle_t*>(handle));
          handle = importedHandle;
@@ -169,39 +207,84 @@ index 7670ac6fb..492ad652e 100644
      }
  
      buffer = static_cast<void const*>(static_cast<uint8_t const*>(buffer) + sizeNeeded);
-@@ -492,7 +520,7 @@ status_t GraphicBuffer::unflatten(
+@@ -563,12 +590,12 @@ status_t GraphicBuffer::unflatten(void const*& buffer, size_t& size, int const*&
  }
  
- bool GraphicBuffer::isDetachedBuffer() const {
--    return mDetachedBufferHandle && mDetachedBufferHandle->isValid();
-+    return mBufferState->detachedBufferHandle && mBufferState->detachedBufferHandle->isValid();
+ void GraphicBuffer::addDeathCallback(GraphicBufferDeathCallback deathCallback, void* context) {
+-    mDeathCallbacks.emplace_back(deathCallback, context);
++    mBufferState->deathCallbacks.emplace_back(deathCallback, context);
  }
  
- status_t GraphicBuffer::setDetachedBufferHandle(std::unique_ptr<DetachedBufferHandle> channel) {
-@@ -501,12 +529,12 @@ status_t GraphicBuffer::setDetachedBufferHandle(std::unique_ptr<DetachedBufferHa
-               "GraphicBuffer. Replacing the old one.");
+ #ifndef LIBUI_IN_VNDK
+ status_t GraphicBuffer::flattenBufferHubBuffer(void*& buffer, size_t& size) const {
+-    sp<NativeHandle> tokenHandle = mBufferHubBuffer->duplicate();
++    sp<NativeHandle> tokenHandle = mBufferState->bufferHubBuffer->duplicate();
+     if (tokenHandle == nullptr || tokenHandle->handle() == nullptr ||
+         tokenHandle->handle()->numFds != 0) {
+         return BAD_VALUE;
+@@ -589,7 +616,7 @@ status_t GraphicBuffer::flattenBufferHubBuffer(void*& buffer, size_t& size) cons
+     buf[0] = 'BHBB';
+     buf[1] = numIntsInToken;
+     memcpy(buf + 2, tokenHandle->handle()->data, static_cast<size_t>(numIntsInToken) * sizeof(int));
+-    buf[2 + numIntsInToken] = static_cast<int32_t>(mGenerationNumber);
++    buf[2 + numIntsInToken] = static_cast<int32_t>(mBufferState->generationNumber);
+ 
+     return NO_ERROR;
+ }
+@@ -617,22 +644,22 @@ status_t GraphicBuffer::unflattenBufferHubBuffer(void const*& buffer, size_t& si
+     if (handle) {
+         free_handle();
      }
+-    mId = 0;
+-    mGenerationNumber = static_cast<uint32_t>(buf[2 + numIntsInToken]);
++    mBufferState->id = 0;
++    mBufferState->generationNumber = static_cast<uint32_t>(buf[2 + numIntsInToken]);
+     mInitCheck =
+             initWithHandle(bufferHubBuffer->duplicateHandle(), /*method=*/TAKE_UNREGISTERED_HANDLE,
+                            bufferHubBuffer->desc().width, bufferHubBuffer->desc().height,
+                            static_cast<PixelFormat>(bufferHubBuffer->desc().format),
+                            bufferHubBuffer->desc().layers, bufferHubBuffer->desc().usage,
+                            bufferHubBuffer->desc().stride);
+-    mBufferId = bufferHubBuffer->id();
+-    mBufferHubBuffer.reset(std::move(bufferHubBuffer.get()));
++    mBufferState->bufferId = bufferHubBuffer->id();
++    mBufferState->bufferHubBuffer = std::move(bufferHubBuffer);
  
--    mDetachedBufferHandle = std::move(channel);
-+    mBufferState->detachedBufferHandle = std::move(channel);
      return NO_ERROR;
  }
  
- std::unique_ptr<DetachedBufferHandle> GraphicBuffer::takeDetachedBufferHandle() {
--    return std::move(mDetachedBufferHandle);
-+    return std::move(mBufferState->detachedBufferHandle);
+ bool GraphicBuffer::isBufferHubBuffer() const {
+-    return mBufferHubBuffer != nullptr;
++    return mBufferState->bufferHubBuffer != nullptr;
  }
+ #endif // LIBUI_IN_VNDK
  
- // ---------------------------------------------------------------------------
 diff --git a/libs/ui/include/ui/GraphicBuffer.h b/libs/ui/include/ui/GraphicBuffer.h
-index cc38982e6..853fe6d28 100644
+index c195342..545ab2b 100644
 --- a/libs/ui/include/ui/GraphicBuffer.h
 +++ b/libs/ui/include/ui/GraphicBuffer.h
-@@ -136,6 +136,12 @@ public:
-     GraphicBuffer(uint32_t inWidth, uint32_t inHeight, PixelFormat inFormat,
-             uint32_t inUsage, std::string requestorName = "<Unknown>");
+@@ -20,6 +20,8 @@
+ #include <stdint.h>
+ #include <sys/types.h>
  
-+    // Pre-layer-count ABI used by the stock Tegra HWC and OMX libraries.
++#include <functional>
++#include <memory>
+ #include <string>
+ #include <utility>
+ #include <vector>
+@@ -42,6 +44,7 @@ namespace android {
+ class BufferHubBuffer;
+ #endif // LIBUI_IN_VNDK
+ 
++
+ class GraphicBufferMapper;
+ 
+ using GraphicBufferDeathCallback = std::function<void(void* /*context*/, uint64_t bufferId)>;
+@@ -152,6 +155,12 @@ public:
+     GraphicBuffer(std::unique_ptr<BufferHubBuffer> buffer);
+ #endif // LIBUI_IN_VNDK
+ 
++    // Pre-layer-count ABI imported by stock Tegra HWC and OMX libraries.
 +    GraphicBuffer(uint32_t inWidth, uint32_t inHeight, PixelFormat inFormat,
 +            uint32_t inUsage, uint32_t inStride,
 +            native_handle_t* inHandle, bool keepOwnership);
@@ -210,12 +293,14 @@ index cc38982e6..853fe6d28 100644
      // return status
      status_t initCheck() const;
  
-@@ -146,11 +152,11 @@ public:
+@@ -162,12 +171,12 @@ public:
      PixelFormat getPixelFormat() const  { return format; }
      uint32_t getLayerCount() const      { return static_cast<uint32_t>(layerCount); }
      Rect getBounds() const              { return Rect(width, height); }
 -    uint64_t getId() const              { return mId; }
+-    int32_t getBufferId() const { return mBufferId; }
 +    uint64_t getId() const              { return mBufferState->id; }
++    int32_t getBufferId() const { return mBufferState->bufferId; }
  
 -    uint32_t getGenerationNumber() const { return mGenerationNumber; }
 +    uint32_t getGenerationNumber() const { return mBufferState->generationNumber; }
@@ -225,55 +310,69 @@ index cc38982e6..853fe6d28 100644
      }
  
      // This function is privileged.  It requires access to the allocator
-@@ -237,26 +243,31 @@ private:
-     ssize_t mInitCheck;
+@@ -268,37 +277,25 @@ private:
  
-     // numbers of fds/ints in native_handle_t to flatten
+     GraphicBufferMapper& mBufferMapper;
+     ssize_t mInitCheck;
+-
+-    // numbers of fds/ints in native_handle_t to flatten
 -    uint32_t mTransportNumFds;
 -    uint32_t mTransportNumInts;
 -
 -    uint64_t mId;
+-
+-    // System unique buffer ID. Note that this is different from mId, which is process unique. For
+-    // GraphicBuffer backed by BufferHub, the mBufferId is a system unique identifier that stays the
+-    // same cross process for the same chunck of underlying memory. Also note that this only applies
+-    // to GraphicBuffers that are backed by BufferHub.
+-    int32_t mBufferId = -1;
 -
 -    // Stores the generation number of this buffer. If this number does not
 -    // match the BufferQueue's internal generation number (set through
 -    // IGBP::setGenerationNumber), attempts to attach the buffer will fail.
 -    uint32_t mGenerationNumber;
 -
--    // Stores a BufferHub handle that can be used to re-attach this GraphicBuffer back into a
--    // BufferHub producer/consumer set. In terms of GraphicBuffer's relationship with BufferHub,
--    // there are three different modes:
--    // 1. Legacy mode: GraphicBuffer is not backed by BufferHub and mDetachedBufferHandle must be
--    //    invalid.
--    // 2. Detached mode: GraphicBuffer is backed by BufferHub, but not part of a producer/consumer
--    //    set. In this mode, mDetachedBufferHandle must be valid.
--    // 3. Attached mode: GraphicBuffer is backed by BufferHub and it's part of a producer/consumer
--    //    set. In this mode, mDetachedBufferHandle must be invalid.
--    std::unique_ptr<DetachedBufferHandle> mDetachedBufferHandle;
-+
-+    // Stock 32-bit Tegra libraries allocate only 120 bytes for GraphicBuffer.
-+    // Pie adds the buffer id, generation and a BufferHub handle after the Oreo
-+    // layout. Keep that metadata out of line so legacy construction cannot
-+    // overwrite the caller's allocation. The native buffer layout is unchanged.
+-    // Send a callback when a GraphicBuffer dies.
+-    //
+-    // This is used for BufferStateLayer caching. GraphicBuffers are refcounted per process. When
+-    // A GraphicBuffer doesn't have any more sp<> in a process, it is destroyed. This causes
+-    // problems when trying to implicitcly cache across process boundaries. Ideally, both sides
+-    // of the cache would hold onto wp<> references. When an app dropped its sp<>, the GraphicBuffer
+-    // would be destroyed. Unfortunately, when SurfaceFlinger has only a wp<> reference to the
+-    // GraphicBuffer, it immediately goes out of scope in the SurfaceFlinger process. SurfaceFlinger
+-    // must hold onto a sp<> to the buffer. When the GraphicBuffer goes out of scope in the app's
+-    // process, the client side cache will get this callback. It erases the buffer from its cache
+-    // and informs SurfaceFlinger that it should drop its strong pointer reference to the buffer.
+-    std::vector<std::pair<GraphicBufferDeathCallback, void* /*mDeathCallbackContext*/>>
+-            mDeathCallbacks;
++    // Stock 32-bit Tegra blobs allocate only 120 bytes for GraphicBuffer.
++    // Keep all post-stock state out of line, including Q's BufferHub handle
++    // and death callbacks. Public ANativeWindowBuffer and wire layouts stay intact.
 +    struct BufferState {
 +        explicit BufferState(uint64_t bufferId);
 +        ~BufferState();
 +
-+        // Keep a wrapped native buffer alive until its wrapper is released.
 +        sp<ANativeWindowBuffer> wrappedBuffer;
 +        uint64_t id;
-+
-+        // Must match BufferQueue's generation when attaching this buffer.
-+        uint32_t generationNumber;
-+        uint32_t transportNumFds;
-+        uint32_t transportNumInts;
-+
-+        // BufferHub relationship, moved here from the object tail:
-+        // 1. Legacy mode: not backed by BufferHub, so this handle is invalid.
-+        // 2. Detached mode: backed by BufferHub but not in a producer/consumer set.
-+        // 3. Attached mode: part of a producer/consumer set, so this handle is invalid.
-+        std::unique_ptr<DetachedBufferHandle> detachedBufferHandle;
++        uint32_t generationNumber = 0;
++        uint32_t transportNumFds = 0;
++        uint32_t transportNumInts = 0;
++        int32_t bufferId = -1;
++        std::vector<std::pair<GraphicBufferDeathCallback, void*>> deathCallbacks;
++#ifndef LIBUI_IN_VNDK
++        std::unique_ptr<BufferHubBuffer> bufferHubBuffer;
++#endif
 +    };
 +    std::unique_ptr<BufferState> mBufferState;
+ 
+ #ifndef LIBUI_IN_VNDK
+     // Flatten this GraphicBuffer object if backed by BufferHubBuffer.
+@@ -312,8 +309,6 @@ private:
+     // process/thread B trying to unflatten and import the buffer with that token.
+     status_t unflattenBufferHubBuffer(void const*& buffer, size_t& size);
+ 
+-    // Stores a BufferHubBuffer that handles buffer signaling, identification.
+-    std::unique_ptr<BufferHubBuffer> mBufferHubBuffer;
+ #endif // LIBUI_IN_VNDK
  };
  
- }; // namespace android

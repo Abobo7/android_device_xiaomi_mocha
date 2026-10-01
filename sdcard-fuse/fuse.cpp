@@ -276,9 +276,11 @@ static void derive_permissions_locked(struct fuse* fuse, struct node *parent,
         } else if (!strcasecmp(node->name, "obb")) {
             /* App-specific directories inside; let anyone traverse */
             node->perm = PERM_ANDROID_OBB;
-            /* Single OBB directory is always shared */
-            node->graft_path = fuse->global->obb_path;
-            node->graft_pathlen = strlen(fuse->global->obb_path);
+            /* Q -o keeps each user's OBB tree in its own Android directory. */
+            if (!fuse->global->unshared_obb) {
+                node->graft_path = fuse->global->obb_path;
+                node->graft_pathlen = strlen(fuse->global->obb_path);
+            }
         } else if (!strcasecmp(node->name, "media")) {
             /* App-specific directories inside; let anyone traverse */
             node->perm = PERM_ANDROID_MEDIA;
@@ -843,6 +845,9 @@ static int handle_unlink(struct fuse* fuse, struct fuse_handler* handler,
         if (fuse != fuse->global->fuse_write) {
             fuse_notify_delete(fuse->global->fuse_write, parent_node->nid, child_node->nid, name);
         }
+        if (fuse != fuse->global->fuse_full) {
+            fuse_notify_delete(fuse->global->fuse_full, parent_node->nid, child_node->nid, name);
+        }
     }
     return 0;
 }
@@ -892,6 +897,9 @@ static int handle_rmdir(struct fuse* fuse, struct fuse_handler* handler,
         }
         if (fuse != fuse->global->fuse_write) {
             fuse_notify_delete(fuse->global->fuse_write, parent_node->nid, child_node->nid, name);
+        }
+        if (fuse != fuse->global->fuse_full) {
+            fuse_notify_delete(fuse->global->fuse_full, parent_node->nid, child_node->nid, name);
         }
     }
     return 0;

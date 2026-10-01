@@ -1,4 +1,4 @@
-# mocha-specific policy for ussrd (USB/system server resource daemon)
+# mocha-specific policy for NVIDIA unified system scaling
 
 type ussrd, domain;
 type ussrd_exec, exec_type, vendor_file_type, file_type;
@@ -12,3 +12,7 @@ allow ussrd sysfs:file rw_file_perms;
 allow ussrd debugfs_clock:dir search;
 allow ussrd debugfs_clock:file w_file_perms;
 allow ussrd self:capability { sys_admin };
+
+# Consume the thermal paths published by the original setup script.
+get_prop(ussrd, thermal_prop)
+r_dir_file(ussrd, sysfs_thermal)

@@ -1,0 +1,21 @@
+diff --git a/media/libstagefright/ACodec.cpp b/media/libstagefright/ACodec.cpp
+index 55e8130..c4a93ce 100644
+--- a/media/libstagefright/ACodec.cpp
++++ b/media/libstagefright/ACodec.cpp
+@@ -6373,6 +6373,16 @@ bool ACodec::BaseState::onOMXFillBufferDone(
+ 
+             info->mData.clear();
+ 
++            // Tegra's H.264 decoder copies CODECCONFIG from the queued SPS
++            // and PPS onto its first two decoded pictures. These buffers hold
++            // valid raw pixels and timestamps, not codec-specific data. Keep
++            // clients from discarding them while preserving EOS and all other
++            // flags, including encoder configuration output.
++            if (rangeLength > 0 && mCodec->mIsVideo && !mCodec->mIsEncoder
++                    && mCodec->mComponentName == "OMX.Nvidia.h264.decode") {
++                flags &= ~OMX_BUFFERFLAG_CODECCONFIG;
++            }
++
+             mCodec->mBufferChannel->drainThisBuffer(info->mBufferID, flags);
+ 
+             info->mStatus = BufferInfo::OWNED_BY_DOWNSTREAM;

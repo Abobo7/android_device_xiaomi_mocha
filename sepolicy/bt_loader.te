@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-type bt_loader, domain;
-type bt_loader_exec, exec_type, file_type;
+type bt_loader, domain, coredomain;
+type bt_loader_exec, exec_type, file_type, system_file_type;
 
 init_daemon_domain(bt_loader)
 set_prop(bt_loader, bdaddr_path_prop)

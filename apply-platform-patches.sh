@@ -20,12 +20,25 @@ apply_project_patches() {
 }
 
 apply_project_patches "$source_root/frameworks/native" frameworks_native
+apply_project_patches "$source_root/frameworks/av" frameworks_av
 apply_project_patches "$source_root/bionic" bionic
 apply_project_patches "$source_root/system/core" system_core
+apply_project_patches "$source_root/system/vold" system_vold
 apply_project_patches "$source_root/frameworks/base" frameworks_base
 apply_project_patches "$source_root/hardware/interfaces" hardware_interfaces
 apply_project_patches "$source_root/hardware/nvidia/power" hardware_nvidia_power
 apply_project_patches "$source_root/hardware/broadcom/libbt" hardware_broadcom_libbt
 apply_project_patches "$source_root/packages/apps/Snap" packages_apps_Snap
 apply_project_patches "$source_root/external/skia" external_skia
-apply_project_patches "$source_root/frameworks/opt/net/wifi" frameworks_opt_net_wifi
+
+apply_project_patches "$source_root/system/ashmemd" system_ashmemd
+
+apply_project_patches "$source_root/system/apex" system_apex
+
+apply_project_patches "$source_root/packages/modules/ExtServices" packages_modules_ExtServices
+
+apply_project_patches "$source_root/packages/providers/MediaProvider" packages_providers_MediaProvider
+
+apply_project_patches "$source_root/system/sepolicy" system_sepolicy
+
+bash "$device_dir/prepare-webview.sh"

@@ -1,0 +1,13 @@
+{
+  "brcm-uim-sysfs/Android.mk": "7f07b1fa8b508384c432b453b28d1d7b3712d429ea23f73bde159413a8a510ff",
+  "brcm-uim-sysfs/brcm_hci_dump.c": "260d7498c429cb39fa8970f0bda0ae48f3113892de21e194cd17b1356b6f9ce7",
+  "brcm-uim-sysfs/btsnoop.c": "f73582edfc33d4dea5d782264452b48c7b47eb32939c898c9f5898d5354870ea",
+  "brcm-uim-sysfs/include/brcm_hci_dump.h": "9e145aec1b4f8891750bb505c83decbc0c792ec697f18e28f08994a4adcf6ff5",
+  "brcm-uim-sysfs/include/btsnoop.h": "6fb1db32fa1acaecac1b113561b0b8f4921b7dedd04503475b898b4b3aedd122",
+  "brcm-uim-sysfs/include/uim.h": "c5e427f96a8f77a88be559b46be427ed50f0e367874f94fb1678f83ad41c1ac5",
+  "brcm-uim-sysfs/include/utils.h": "465aa8bb0462206cbfe89191fae621629363f554097bbb5ee5e955b48ab7aa8b",
+  "brcm-uim-sysfs/include/v4l2_cfg.h": "8e6ce72575d829acfd82ed47f97b6aa6c174ec412daeb4114bb14362ae0acf42",
+  "brcm-uim-sysfs/uim.c": "b00b723bfc0144b733f50f2639942bef83dc32f49fad7a516c6fef737ef52da1",
+  "brcm-uim-sysfs/upio.c": "a93d3967b735b2be510432f7f1c2a1e37bfd9eec74999f113954e37ad7817a81",
+  "brcm-uim-sysfs/utils.c": "c18e9f2c94e645281f100696a1fa2013f8694d9ed0f8ea5f3c360b1c9e8e5076"
+}

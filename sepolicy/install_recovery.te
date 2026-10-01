@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-allow install_recovery mtd_device:dir r_dir_perms;
-allow install_recovery mtd_device:chr_file rw_file_perms;
+# mocha uses eMMC block partitions, not MTD. Android 10 removed mtd_device.
+# Recovery preservation is handled by the device releasetools extension.

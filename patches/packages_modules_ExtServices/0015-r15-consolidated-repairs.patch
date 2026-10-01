@@ -1,0 +1,57 @@
+--- a/src/android/ext/services/notification/Assistant.java
++++ b/src/android/ext/services/notification/Assistant.java
+@@ -320,7 +320,17 @@
+             }
+ 
+             boolean updatedImpressions = false;
+-            String channelId = mLiveNotifications.remove(sbn.getKey()).getChannel().getId();
++            NotificationEntry removed = mLiveNotifications.remove(sbn.getKey());
++            Ranking ranking = new Ranking();
++            NotificationChannel channel = removed != null ? removed.getChannel() : null;
++            if (channel == null && rankingMap != null && rankingMap.getRanking(sbn.getKey(), ranking)) {
++                channel = ranking.getChannel();
++            }
++            if (channel == null) {
++                // The notification predates this listener's connection; no channel to update.
++                return;
++            }
++            String channelId = channel.getId();
+             String key = getKey(sbn.getPackageName(), sbn.getUserId(), channelId);
+             synchronized (mkeyToImpressions) {
+                 ChannelImpressions ci = mkeyToImpressions.getOrDefault(key,
+@@ -329,7 +339,7 @@
+                     ci.incrementViews();
+                     updatedImpressions = true;
+                 }
+-                if (PREJUDICAL_DISMISSALS.contains(reason)) {
++                if (stats != null && PREJUDICAL_DISMISSALS.contains(reason)) {
+                     if ((!sbn.isAppGroup() || sbn.getNotification().isGroupChild())
+                             && !stats.hasInteracted()
+                             && stats.getDismissalSurface() != NotificationStats.DISMISSAL_AOD
+--- a/tests/src/android/ext/services/notification/AssistantTest.java
++++ b/tests/src/android/ext/services/notification/AssistantTest.java
+@@ -451,6 +451,24 @@
+     }
+ 
+     @Test
++    public void testRemovedWithoutPostedUsesRankingChannel() {
++        StatusBarNotification sbn = generateSbn(PKG1, UID1, P1C1, "preexisting", null);
++        Ranking ranking = new Ranking();
++        ranking.populate(sbn.getKey(), 0, true, 0, 0, P1C1.getImportance(),
++                null, null, P1C1, new ArrayList<>(), new ArrayList<>(), false,
++                0, false, 0, false, new ArrayList<>(), new ArrayList<>(), false, false);
++        RankingMap rankingMap = new RankingMap(new Ranking[]{ranking});
++        NotificationStats stats = new NotificationStats();
++        stats.setSeen();
++        mAssistant.onNotificationRemoved(sbn, rankingMap, stats, 0);
++        ChannelImpressions impressions = mAssistant.getImpressions(
++                mAssistant.getKey(PKG1, sbn.getUserId(), P1C1.getId()));
++        assertNotNull(impressions);
++        assertEquals(1, impressions.getViews());
++        assertFalse(mAssistant.mLiveNotifications.containsKey(sbn.getKey()));
++    }
++
++    @Test
+     public void testTrimLiveNotifications() {
+         StatusBarNotification sbn = generateSbn(PKG1, UID1, P1C1, "no", null);
+         mAssistant.setFakeRanking(generateRanking(sbn, P1C1));

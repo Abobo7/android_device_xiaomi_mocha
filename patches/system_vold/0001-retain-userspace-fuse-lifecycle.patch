@@ -1,0 +1,43 @@
+diff --git a/model/EmulatedVolume.cpp b/model/EmulatedVolume.cpp
+index 552fe2f..6afa51f 100644
+--- a/model/EmulatedVolume.cpp
++++ b/model/EmulatedVolume.cpp
+@@ -115,12 +115,22 @@ status_t EmulatedVolume::doMount() {
+         nsecs_t now = systemTime(SYSTEM_TIME_BOOTTIME);
+         if (nanoseconds_to_milliseconds(now - start) > 5000) {
+             LOG(WARNING) << "Timed out while waiting for FUSE to spin up";
++            // Also reap an exited helper and undo any partially mounted views.
++            // The volume is not exposed to applications until doMount succeeds.
++            kill(mFusePid, SIGKILL);
++            TEMP_FAILURE_RETRY(waitpid(mFusePid, nullptr, 0));
++            mFusePid = 0;
++            ForceUnmount(mFuseDefault);
++            ForceUnmount(mFuseRead);
++            ForceUnmount(mFuseWrite);
++            ForceUnmount(mFuseFull);
+             return -ETIMEDOUT;
+         }
+     }
+     /* sdcardfs will have exited already. FUSE will still be running */
+-    TEMP_FAILURE_RETRY(waitpid(mFusePid, nullptr, 0));
+-    mFusePid = 0;
++    if (TEMP_FAILURE_RETRY(waitpid(mFusePid, nullptr, WNOHANG)) == mFusePid) {
++        mFusePid = 0;
++    }
+ 
+     return OK;
+ }
+@@ -136,6 +146,13 @@ status_t EmulatedVolume::doUnmount() {
+     ForceUnmount(mFuseWrite);
+     ForceUnmount(mFuseFull);
+ 
++    // The userspace FUSE backend keeps serving until all views are unmounted.
++    if (mFusePid > 0) {
++        kill(mFusePid, SIGTERM);
++        TEMP_FAILURE_RETRY(waitpid(mFusePid, nullptr, 0));
++        mFusePid = 0;
++    }
++
+     rmdir(mFuseDefault.c_str());
+     rmdir(mFuseRead.c_str());
+     rmdir(mFuseWrite.c_str());

@@ -1,0 +1,216 @@
+diff --git a/libs/binder/Parcel.cpp b/libs/binder/Parcel.cpp
+index 5a82583..b31bc61 100644
+--- a/libs/binder/Parcel.cpp
++++ b/libs/binder/Parcel.cpp
+@@ -78,6 +78,17 @@ static size_t pad_size(size_t s) {
+ 
+ namespace android {
+ 
++struct Parcel::ParcelState {
++    void* mOwnerCookie = nullptr;
++    size_t mOpenAshmemSize = 0;
++    size_t mWorkSourceRequestHeaderPosition = 0;
++    bool mRequestHeaderPresent = false;
++};
++
++#if defined(__arm__)
++static_assert(sizeof(Parcel) == 48, "stock NVIDIA clients allocate 48-byte Parcels");
++#endif
++
+ static pthread_mutex_t gParcelGlobalAllocSizeLock = PTHREAD_MUTEX_INITIALIZER;
+ static size_t gParcelGlobalAllocSize = 0;
+ static size_t gParcelGlobalAllocCount = 0;
+@@ -349,7 +360,7 @@ status_t unflatten_binder(const sp<ProcessState>& proc,
+ 
+ // ---------------------------------------------------------------------------
+ 
+-Parcel::Parcel()
++Parcel::Parcel() : mState(new ParcelState)
+ {
+     LOG_ALLOC("Parcel %p: constructing", this);
+     initState();
+@@ -358,6 +369,7 @@ Parcel::Parcel()
+ Parcel::~Parcel()
+ {
+     freeDataNoInit();
++    delete mState;
+     LOG_ALLOC("Parcel %p: destroyed", this);
+ }
+ 
+@@ -547,7 +559,7 @@ status_t Parcel::appendFrom(const Parcel *parcel, size_t offset, size_t len)
+ 
+             flat_binder_object* flat
+                 = reinterpret_cast<flat_binder_object*>(mData + off);
+-            acquire_object(proc, *flat, this, &mOpenAshmemSize);
++            acquire_object(proc, *flat, this, &mState->mOpenAshmemSize);
+ 
+             if (flat->hdr.type == BINDER_TYPE_FD) {
+                 // If this is a file descriptor, we need to dup it so the
+@@ -607,9 +619,9 @@ bool Parcel::hasFileDescriptors() const
+ void Parcel::updateWorkSourceRequestHeaderPosition() const {
+     // Only update the request headers once. We only want to point
+     // to the first headers read/written.
+-    if (!mRequestHeaderPresent) {
+-        mWorkSourceRequestHeaderPosition = dataPosition();
+-        mRequestHeaderPresent = true;
++    if (!mState->mRequestHeaderPresent) {
++        mState->mWorkSourceRequestHeaderPosition = dataPosition();
++        mState->mRequestHeaderPresent = true;
+     }
+ }
+ 
+@@ -627,12 +639,12 @@ status_t Parcel::writeInterfaceToken(const String16& interface)
+ 
+ bool Parcel::replaceCallingWorkSourceUid(uid_t uid)
+ {
+-    if (!mRequestHeaderPresent) {
++    if (!mState->mRequestHeaderPresent) {
+         return false;
+     }
+ 
+     const size_t initialPosition = dataPosition();
+-    setDataPosition(mWorkSourceRequestHeaderPosition);
++    setDataPosition(mState->mWorkSourceRequestHeaderPosition);
+     status_t err = writeInt32(uid);
+     setDataPosition(initialPosition);
+     return err == NO_ERROR;
+@@ -640,12 +652,12 @@ bool Parcel::replaceCallingWorkSourceUid(uid_t uid)
+ 
+ uid_t Parcel::readCallingWorkSourceUid()
+ {
+-    if (!mRequestHeaderPresent) {
++    if (!mState->mRequestHeaderPresent) {
+         return IPCThreadState::kUnsetWorkSource;
+     }
+ 
+     const size_t initialPosition = dataPosition();
+-    setDataPosition(mWorkSourceRequestHeaderPosition);
++    setDataPosition(mState->mWorkSourceRequestHeaderPosition);
+     uid_t uid = readInt32();
+     setDataPosition(initialPosition);
+     return uid;
+@@ -1405,7 +1417,7 @@ restart_write:
+         // Need to write meta-data?
+         if (nullMetaData || val.binder != 0) {
+             mObjects[mObjectsSize] = mDataPos;
+-            acquire_object(ProcessState::self(), val, this, &mOpenAshmemSize);
++            acquire_object(ProcessState::self(), val, this, &mState->mOpenAshmemSize);
+             mObjectsSize++;
+             // Clear sorted flag if we aren't appending to the end.
+             mObjectsSorted &= mDataPos == mDataSize;
+@@ -2603,7 +2615,7 @@ void Parcel::ipcSetDataReference(const uint8_t* data, size_t dataSize,
+     mNextObjectHint = 0;
+     mObjectsSorted = false;
+     mOwner = relFunc;
+-    mOwnerCookie = relCookie;
++    mState->mOwnerCookie = relCookie;
+     for (size_t i = 0; i < mObjectsSize; i++) {
+         binder_size_t offset = mObjects[i];
+         if (offset < minOffset) {
+@@ -2656,7 +2668,7 @@ void Parcel::releaseObjects()
+         i--;
+         const flat_binder_object* flat
+             = reinterpret_cast<flat_binder_object*>(data+objects[i]);
+-        release_object(proc, *flat, this, &mOpenAshmemSize);
++        release_object(proc, *flat, this, &mState->mOpenAshmemSize);
+     }
+ }
+ 
+@@ -2673,7 +2685,7 @@ void Parcel::acquireObjects()
+         i--;
+         const flat_binder_object* flat
+             = reinterpret_cast<flat_binder_object*>(data+objects[i]);
+-        acquire_object(proc, *flat, this, &mOpenAshmemSize);
++        acquire_object(proc, *flat, this, &mState->mOpenAshmemSize);
+     }
+ }
+ 
+@@ -2689,7 +2701,7 @@ void Parcel::freeDataNoInit()
+         LOG_ALLOC("Parcel %p: freeing other owner data", this);
+         //ALOGI("Freeing data ref of %p (pid=%d)", this, getpid());
+         closeFileDescriptors();
+-        mOwner(this, mData, mDataSize, mObjects, mObjectsSize, mOwnerCookie);
++        mOwner(this, mData, mDataSize, mObjects, mObjectsSize, mState->mOwnerCookie);
+     } else {
+         LOG_ALLOC("Parcel %p: freeing allocated data", this);
+         releaseObjects();
+@@ -2859,7 +2871,7 @@ status_t Parcel::continueWrite(size_t desired)
+         }
+         //ALOGI("Freeing data ref of %p (pid=%d)", this, getpid());
+         truncateFileDescriptors(objectsSize);
+-        mOwner(this, mData, mDataSize, mObjects, mObjectsSize, mOwnerCookie);
++        mOwner(this, mData, mDataSize, mObjects, mObjectsSize, mState->mOwnerCookie);
+         mOwner = nullptr;
+ 
+         LOG_ALLOC("Parcel %p: taking ownership of %zu capacity", this, desired);
+@@ -2888,7 +2900,7 @@ status_t Parcel::continueWrite(size_t desired)
+                     // will need to rescan because we may have lopped off the only FDs
+                     mFdsKnown = false;
+                 }
+-                release_object(proc, *flat, this, &mOpenAshmemSize);
++                release_object(proc, *flat, this, &mState->mOpenAshmemSize);
+             }
+ 
+             if (objectsSize == 0) {
+@@ -2983,9 +2995,9 @@ void Parcel::initState()
+     mFdsKnown = true;
+     mAllowFds = true;
+     mOwner = nullptr;
+-    mOpenAshmemSize = 0;
+-    mWorkSourceRequestHeaderPosition = 0;
+-    mRequestHeaderPresent = false;
++    mState->mOpenAshmemSize = 0;
++    mState->mWorkSourceRequestHeaderPosition = 0;
++    mState->mRequestHeaderPresent = false;
+ 
+     // racing multiple init leads only to multiple identical write
+     if (gMaxFds == 0) {
+@@ -3020,12 +3032,12 @@ size_t Parcel::getBlobAshmemSize() const
+     // This used to return the size of all blobs that were written to ashmem, now we're returning
+     // the ashmem currently referenced by this Parcel, which should be equivalent.
+     // TODO: Remove method once ABI can be changed.
+-    return mOpenAshmemSize;
++    return mState->mOpenAshmemSize;
+ }
+ 
+ size_t Parcel::getOpenAshmemSize() const
+ {
+-    return mOpenAshmemSize;
++    return mState->mOpenAshmemSize;
+ }
+ 
+ // --- Parcel::Blob ---
+diff --git a/libs/binder/include/binder/Parcel.h b/libs/binder/include/binder/Parcel.h
+index 5444d9e..90b7b4a 100644
+--- a/libs/binder/include/binder/Parcel.h
++++ b/libs/binder/include/binder/Parcel.h
+@@ -488,15 +488,15 @@ private:
+     mutable size_t      mNextObjectHint;
+     mutable bool        mObjectsSorted;
+ 
+-    mutable bool        mRequestHeaderPresent;
+-    mutable size_t      mWorkSourceRequestHeaderPosition;
+-
+     mutable bool        mFdsKnown;
+     mutable bool        mHasFds;
+     bool                mAllowFds;
+ 
+     release_func        mOwner;
+-    void*               mOwnerCookie;
++    // Stock 32-bit NVIDIA clients reserve only 48 bytes for a Parcel.
++    // Keep newer bookkeeping in heap state without changing the wire format.
++    struct ParcelState;
++    ParcelState*        mState;
+ 
+     class Blob {
+     public:
+@@ -581,9 +581,6 @@ public:
+         inline void* data() { return mData; }
+     };
+ 
+-private:
+-    size_t mOpenAshmemSize;
+-
+ public:
+     // TODO: Remove once ABI can be changed.
+     size_t getBlobAshmemSize() const;

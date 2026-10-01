@@ -15,9 +15,5 @@ on early-init
 on post-fs-data
     mkdir /mnt/usercalib/touchscreen 0755 system system
     symlink /mnt/usercalib/touchscreen /data/misc/touchscreen
-    chown system system /data/misc/touchscreen
-    chmod 0755 /data/misc/touchscreen
     mkdir /mnt/usercalib/mpu 0755 system system
     symlink /mnt/usercalib/mpu /data/misc/mpu
-    chown system system /data/misc/mpu
-    chmod 0755 /data/misc/mpu

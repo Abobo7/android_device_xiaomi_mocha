@@ -1,0 +1,40 @@
+--- a/src/com/android/providers/media/MediaProvider.java
++++ b/src/com/android/providers/media/MediaProvider.java
+@@ -484,7 +484,10 @@
+                 db.addCustomFunction("_OBJECT_REMOVED", 1, mObjectRemovedCallback);
+             }
+ 
+-            if (mInternal) return;  // The internal database is kept separately.
++            if (mInternal) {
++                createInternalGenreTables(db);
++                return;
++            }
+ 
+             // the code below is only needed on devices with removable storage
+             if (!Environment.isExternalStorageRemovable()) return;
+@@ -1001,6 +1004,17 @@
+             db.execSQL("DROP TABLE IF EXISTS " + c.getString(0));
+         }
+         c.close();
++    }
++
++    private static void createInternalGenreTables(SQLiteDatabase db) {
++        db.execSQL("CREATE TABLE IF NOT EXISTS audio_genres (_id INTEGER PRIMARY KEY,name TEXT NOT NULL)");
++        db.execSQL("CREATE TABLE IF NOT EXISTS audio_genres_map (_id INTEGER PRIMARY KEY,"
++                + "audio_id INTEGER NOT NULL,genre_id INTEGER NOT NULL,"
++                + "UNIQUE (audio_id,genre_id) ON CONFLICT IGNORE)");
++        db.execSQL("CREATE TRIGGER IF NOT EXISTS audio_genres_cleanup DELETE ON audio_genres"
++                + " BEGIN DELETE FROM audio_genres_map WHERE genre_id=old._id; END");
++        db.execSQL("CREATE TRIGGER IF NOT EXISTS internal_audio_genres_cleanup DELETE ON files"
++                + " WHEN old.media_type=2 BEGIN DELETE FROM audio_genres_map WHERE audio_id=old._id; END");
+     }
+ 
+     private static void createLatestSchema(SQLiteDatabase db, boolean internal) {
+@@ -1098,6 +1112,7 @@
+         db.execSQL("CREATE TRIGGER albumart_cleanup2 DELETE ON album_art"
+                 + " BEGIN SELECT _DELETE_FILE(old._data);END");
+ 
++        if (internal) createInternalGenreTables(db);
+         createLatestViews(db, internal);
+     }
+ 

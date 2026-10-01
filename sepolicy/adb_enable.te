@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-type adb_enable, domain;
-type adb_enable_exec, exec_type, file_type;
+type adb_enable, domain, coredomain;
+type adb_enable_exec, exec_type, file_type, system_file_type;
 
 init_daemon_domain(adb_enable)
 set_prop(adb_enable, system_radio_prop)

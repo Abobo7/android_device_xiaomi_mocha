@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <project name="Abobo7/android_device_xiaomi_mocha" path="device/xiaomi/mocha" remote="github" revision="lineage-17.1" />
+  <project name="Abobo7/android_kernel_xiaomi_mocha" path="kernel/xiaomi/mocha" remote="github" revision="lineage-17.1" />
+  <project name="Abobo7/android_vendor_xiaomi_mocha" path="vendor/xiaomi/mocha" remote="github" revision="lineage-17.1" />
+  <project name="LineageOS/android_hardware_nvidia_power" path="hardware/nvidia/power" remote="github" revision="lineage-15.1" />
+  <project name="chenxiaoqun/gcc-linaro-4.9.4-2017.01-x86_64_arm-linux-gnueabihf" path="prebuilts/gcc/linux-x86/arm/gcc-linaro-4.9.4-2017.01" remote="github" revision="master" />
+  <!-- The Q baseline does not include FMRadio; this remains an open feature. -->
+  <remove-project name="LineageOS/android_packages_apps_FMRadio" />
+</manifest>

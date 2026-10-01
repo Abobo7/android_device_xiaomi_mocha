@@ -1,5 +1,5 @@
 diff --git a/Android.mk b/Android.mk
-index 2b219cd..e2227da 100644
+index 2b219cd..76edcf0 100644
 --- a/Android.mk
 +++ b/Android.mk
 @@ -20,6 +20,11 @@ include $(CLEAR_VARS)
@@ -14,6 +14,15 @@ index 2b219cd..e2227da 100644
  # This is only for devices that can contain a sata hard drive, currently only foster
  ifneq ($(filter foster,$(TARGET_DEVICE)),)
  LOCAL_CFLAGS += -DENABLE_SATA_STANDBY_MODE
+@@ -39,7 +44,7 @@ LOCAL_MODULE_RELATIVE_PATH := hw
+ 
+ LOCAL_PROPRIETARY_MODULE := true
+ 
+-LOCAL_SHARED_LIBRARIES := liblog libcutils libutils libdl
++LOCAL_SHARED_LIBRARIES := liblog libcutils libutils libbase libdl
+ 
+ LOCAL_MODULE := power.$(TARGET_BOARD_PLATFORM)
+ 
 diff --git a/nvpowerhal.cpp b/nvpowerhal.cpp
 index 199992f..920028b 100644
 --- a/nvpowerhal.cpp

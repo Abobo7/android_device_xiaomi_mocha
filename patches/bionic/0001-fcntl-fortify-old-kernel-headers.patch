@@ -1,5 +1,5 @@
 diff --git a/libc/include/bits/fortify/fcntl.h b/libc/include/bits/fortify/fcntl.h
-index 75cd4f2ed..1767a4e0f 100644
+index e7f2c82..09d7c6e 100644
 --- a/libc/include/bits/fortify/fcntl.h
 +++ b/libc/include/bits/fortify/fcntl.h
 @@ -40,10 +40,18 @@ int __openat_real(int, const char*, int, ...) __RENAME(openat);
@@ -18,6 +18,6 @@ index 75cd4f2ed..1767a4e0f 100644
 +#else
 +#define __open_modes_useful(flags) ((flags) & O_CREAT)
 +#endif
- #if defined(__clang__)
  
  #if __ANDROID_API__ >= __ANDROID_API_J_MR1__
+ __BIONIC_ERROR_FUNCTION_VISIBILITY

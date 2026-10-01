@@ -161,6 +161,7 @@
 # phs
 (/system)?/vendor/bin/nvphsd		u:object_r:nvphsd_exec:s0
 /system/bin/nvphsd_setup.sh		u:object_r:nvphsd_setup_exec:s0
+/system/bin/ussr_setup.sh			u:object_r:nvphsd_setup_exec:s0
 # frostaudiortp
 /system/bin/frostaudiortp		u:object_r:frostaudiortp_exec:s0
 # pbc
@@ -411,7 +412,7 @@
 /system/bin/conn_init			u:object_r:conn_wifi_exec:s0
 
 # brcm-uim-sysfs
-/system/bin/brcm-uim-sysfs		u:object_r:uim_exec:s0
+/(system/vendor|vendor)/bin/brcm-uim-sysfs		u:object_r:uim_exec:s0
 
 # ussrd
 /vendor/bin/ussrd			u:object_r:ussrd_exec:s0
@@ -443,9 +444,19 @@
 # mocha camera HAL is named camera.vendor.tegra.so
 
 # mocha firmware blobs live in /system/etc/firmware (legacy layout)
-/system/etc/firmware/fw_bcmdhd\.bin	u:object_r:vendor_firmware_wifi_file:s0
-/system/etc/firmware/fw_bcmdhd_apsta\.bin	u:object_r:vendor_firmware_wifi_file:s0
-/system/etc/firmware/nvram\.txt	u:object_r:vendor_firmware_wifi_file:s0
-/system/etc/firmware/BCM4350C0\.hcd	u:object_r:vendor_firmware_wifi_file:s0
+/system/etc/firmware/fw_bcmdhd\.bin	u:object_r:system_firmware_wifi_file:s0
+/system/etc/firmware/fw_bcmdhd_apsta\.bin	u:object_r:system_firmware_wifi_file:s0
+/system/etc/firmware/nvram\.txt	u:object_r:system_firmware_wifi_file:s0
+/system/etc/firmware/BCM4350C0\.hcd	u:object_r:system_firmware_wifi_file:s0
 
 /system/bin/sdcard-fuse                           u:object_r:sdcardd_exec:s0
+
+# Static legacy links in the Android Q system root.
+/gl       u:object_r:rootfs:s0
+/lbh      u:object_r:rootfs:s0
+/usbdrive u:object_r:rootfs:s0
+
+/persist u:object_r:rootfs:s0
+/data/misc/sensors(/.*)? u:object_r:mocha_sensor_data_file:s0
+
+/(vendor|system/vendor)/bin/hw/android\.hardware\.memtrack@1\.0-service-mocha u:object_r:hal_memtrack_default_exec:s0

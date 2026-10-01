@@ -1,16 +1,39 @@
 diff --git a/services/surfaceflinger/SurfaceFlinger.cpp b/services/surfaceflinger/SurfaceFlinger.cpp
-index f513b9fd7..b5107a9fa 100644
+index 21e9e8e..f4f31bd 100644
 --- a/services/surfaceflinger/SurfaceFlinger.cpp
 +++ b/services/surfaceflinger/SurfaceFlinger.cpp
-@@ -319,6 +319,11 @@ SurfaceFlinger::SurfaceFlinger() : SurfaceFlinger(SkipInitialization) {
+@@ -354,6 +354,13 @@ SurfaceFlinger::SurfaceFlinger(Factory& factory) : SurfaceFlinger(factory, SkipI
  
-     mPrimaryDispSync.init(SurfaceFlinger::hasSyncFramework, SurfaceFlinger::dispSyncPresentTimeOffset);
+     ALOGI_IF(mDebugRegion, "showupdates enabled");
  
-+    // Some legacy HWC implementations cannot reliably compose Pie layers.
-+    // Keep GPU rendering and HWC presentation, but compose layers on the client.
-+    mDebugDisableHWC = property_get_bool("ro.sf.force_client_composition", false);
-+    ALOGI_IF(mDebugDisableHWC, "Forcing client composition for legacy HWC compatibility");
++    // Legacy HWC layers can show stale frames; force client composition
++    // on devices whose HWC 1.x cannot handle the pipeline correctly.
++    char fcc_value[PROPERTY_VALUE_MAX];
++    property_get("ro.sf.force_client_composition", fcc_value, "false");
++    mForceClientComposition = bool(strcmp(fcc_value, "true") == 0);
++    ALOGI_IF(mForceClientComposition, "forcing client composition");
 +
-     // debugging stuff...
-     char value[PROPERTY_VALUE_MAX];
+     // DDMS debugging deprecated (b/120782499)
+     property_get("debug.sf.ddms", value, "0");
+     int debugDdms = atoi(value);
+@@ -1821,7 +1828,7 @@ void SurfaceFlinger::calculateWorkingSet() {
+             for (auto& layer : display->getOutputLayersOrderedByZ()) {
+                 auto& compositionState = layer->editState();
+                 compositionState.forceClientComposition = false;
+-                if (!compositionState.hwc || mDebugDisableHWC || mDebugRegion) {
++                if (!compositionState.hwc || mDebugDisableHWC || mDebugRegion || mForceClientComposition) {
+                     compositionState.forceClientComposition = true;
+                 }
  
+diff --git a/services/surfaceflinger/SurfaceFlinger.h b/services/surfaceflinger/SurfaceFlinger.h
+index c4578d0..5dd9a33 100644
+--- a/services/surfaceflinger/SurfaceFlinger.h
++++ b/services/surfaceflinger/SurfaceFlinger.h
+@@ -1020,6 +1020,7 @@ private:
+     // don't use a lock for these, we don't care
+     int mDebugRegion = 0;
+     bool mDebugDisableHWC = false;
++    bool mForceClientComposition = false;
+     bool mDebugDisableTransformHint = false;
+     volatile nsecs_t mDebugInTransaction = 0;
+     bool mForceFullDamage = false;

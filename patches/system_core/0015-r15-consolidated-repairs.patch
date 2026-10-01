@@ -1,0 +1,72 @@
+--- a/lmkd/lmkd.c
++++ b/lmkd/lmkd.c
+@@ -536,14 +536,16 @@
+     }
+ 
+     ret = TEMP_FAILURE_RETRY(write(fd, s, len));
+-    if (ret < 0) {
+-        ALOGE("Error writing %s; errno=%d", path, errno);
+-    } else if (ret < len) {
++    const int saved_errno = ret < 0 ? errno : (ret == len ? 0 : EIO);
++    if (ret < 0 && (err_if_missing || (saved_errno != ESRCH && saved_errno != ENOENT))) {
++        ALOGE("Error writing %s; errno=%d", path, saved_errno);
++    } else if (ret >= 0 && ret < len) {
+         ALOGE("Short write on %s; length=%zd", path, ret);
+     }
+ 
+     close(fd);
+-    return true;
++    errno = saved_errno;
++    return ret == len;
+ }
+ 
+ static inline long get_time_diff_ms(struct timespec *from,
+@@ -627,8 +629,9 @@
+     snprintf(path, sizeof(path), "/proc/%d/oom_score_adj", params.pid);
+     snprintf(val, sizeof(val), "%d", params.oomadj);
+     if (!writefilestring(path, val, false)) {
+-        ALOGW("Failed to open %s; errno=%d: process %d might have been killed",
+-              path, errno, params.pid);
++        if (errno != ESRCH && errno != ENOENT) {
++            ALOGW("Failed to set %s; errno=%d", path, errno);
++        }
+         /* If this file does not exist the process is dead. */
+         return;
+     }
+--- a/rootdir/init.rc
++++ b/rootdir/init.rc
+@@ -570,25 +570,16 @@
+ # It is recommended to put unnecessary data/ initialization from post-fs-data
+ # to start-zygote in device's init.rc to unblock zygote start.
+ on zygote-start && property:ro.crypto.state=unencrypted
+-    # A/B update verifier that marks a successful boot.
+-    exec_start update_verifier_nonencrypted
+     start netd
+     start zygote
+-    start zygote_secondary
+ 
+ on zygote-start && property:ro.crypto.state=unsupported
+-    # A/B update verifier that marks a successful boot.
+-    exec_start update_verifier_nonencrypted
+     start netd
+     start zygote
+-    start zygote_secondary
+ 
+ on zygote-start && property:ro.crypto.state=encrypted && property:ro.crypto.type=file
+-    # A/B update verifier that marks a successful boot.
+-    exec_start update_verifier_nonencrypted
+     start netd
+     start zygote
+-    start zygote_secondary
+ 
+ on boot && property:ro.config.low_ram=true
+     # Tweak background writeout
+@@ -790,6 +781,8 @@
+     chmod 0773 /data/misc/trace
+     # Give reads to anyone for the window trace folder on debug builds.
+     chmod 0775 /data/misc/wmtrace
++
++on property:ro.debuggable=1 && property:ro.boot.console=*
+     start console
+ 
+ service flash_recovery /system/bin/install-recovery.sh

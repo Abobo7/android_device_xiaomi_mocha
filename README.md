@@ -1,3 +1,33 @@
+# Xiaomi Mi Pad (mocha): Android 10 / LineageOS 17.1 r15
+
+r15 boots with JIT and Codec2 enabled. Graphics/Parcel ABI compatibility,
+FUSE storage, Wi-Fi, camera, H.264 decoding, memory accounting, and the EGL
+preload lifetime repairs are included. The final installed r15 ZIP SHA-256 is
+`5ecd828d80093517c024811c168d00f5bbdef137f41e6d7a75c7aac719599336`.
+An old memtrack crash is not proven fixed; FMRadio is absent in this Q baseline,
+and audio peripherals and long-term stability remain incompletely tested.
+
+## Rebuilding the validated branch
+
+Initialize the official LineageOS manifest on `lineage-17.1`, then install
+`manifests/mocha.xml` from this branch as `.repo/local_manifests/mocha.xml`
+before syncing. Do not add duplicate mocha entries or `device/nvidia/tegra-common`.
+The device, kernel, and vendor projects must all use `lineage-17.1`.
+
+Before building, run `bash device/xiaomi/mocha/apply-platform-patches.sh`.
+This verifies/applies the checked-in platform patches and restores the exact
+WebView prebuilt from `vendor/xiaomi/mocha/prebuilt/webview`.
+Use the pinned Linaro 4.9.4 toolchain for the kernel. Export `LINEAGE_BUILD=mocha`
+before sourcing `build/envsetup.sh`, run `breakfast mocha`, then build `bacon`.
+`MOCHA_ADB_PUBLIC_KEY` is optional and may point to the builder's own public key;
+no private key or device-specific authorization key is stored here.
+
+Platform changes are distributed as device-tree patches, not pushed to LineageOS
+upstream repositories. Patch baselines are recorded under `patches/`.
+Keep recovery and user data when installing a compatible update; no wipe is
+part of these source publication changes. Existing proprietary blob bytes are
+unchanged. Consult `patches/README.md` for the compatibility details.
+
 # Device configuration for XiaoMi MiPad Tablet
 
 ## Spec Sheet

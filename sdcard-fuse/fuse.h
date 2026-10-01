@@ -145,6 +145,7 @@ struct fuse_global {
     uid_t uid;
     gid_t gid;
     bool multi_user;
+    bool unshared_obb;
 
     char source_path[PATH_MAX];
     char obb_path[PATH_MAX];
@@ -176,6 +177,7 @@ struct fuse_global {
     struct fuse* fuse_default;
     struct fuse* fuse_read;
     struct fuse* fuse_write;
+    struct fuse* fuse_full;
 };
 
 /* Single FUSE mount */

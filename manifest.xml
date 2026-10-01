@@ -112,12 +112,12 @@
         </interface>
     </hal>
     <!-- This 3.10 cfg80211 driver has no nl80211 vendor commands/events.
-         Use Oreo's supported wificond + HIDL supplicant path; do not advertise
+         Use wificond + the Q HIDL supplicant path; do not advertise
          an optional vendor HAL whose initialization cannot succeed. -->
     <hal format="hidl">
         <name>android.hardware.wifi.supplicant</name>
         <transport>hwbinder</transport>
-        <version>1.0</version>
+        <version>1.2</version>
         <interface>
             <name>ISupplicant</name>
             <instance>default</instance>

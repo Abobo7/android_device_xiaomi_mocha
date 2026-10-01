@@ -20,4 +20,4 @@ dontaudit kernel device:{chr_file blk_file } { create setattr getattr unlink };
 dontaudit kernel self:capability mknod;
 
 # allow kernel to read WiFi firmware
-allow kernel vendor_firmware_wifi_file:file r_file_perms;
+allow kernel { vendor_firmware_wifi_file system_firmware_wifi_file }:file r_file_perms;

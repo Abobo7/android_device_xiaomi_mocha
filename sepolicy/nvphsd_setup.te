@@ -15,8 +15,8 @@
 #
 # nvphsd_setup.sh - power management service setup
 #
-type nvphsd_setup, domain;
-type nvphsd_setup_exec, exec_type, file_type;
+type nvphsd_setup, domain, coredomain;
+type nvphsd_setup_exec, exec_type, file_type, system_file_type;
 
 init_daemon_domain(nvphsd_setup)
 

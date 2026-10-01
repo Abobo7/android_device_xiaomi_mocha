@@ -1,7 +1,7 @@
 # mocha-specific policy for brcm-uim-sysfs (BT/FM/ANT+ UIM daemon)
 
 type uim, domain;
-type uim_exec, exec_type, file_type;
+type uim_exec, exec_type, file_type, vendor_file_type;
 
 init_daemon_domain(uim)
 

@@ -92,3 +92,9 @@ persist.bluetooth.factoryreset u:object_r:bluetooth_prop:s0
 tegra.ota.boot_device		u:object_r:ota_prop:s0
 tegra.ota.gpt_device		u:object_r:ota_prop:s0
 tegra.ota.user_device		u:object_r:ota_prop:s0
+
+# Original 2014 ussrd ABI (the newer daemon uses phs.therm.*).
+NV_THERM_CPU_TEMP                u:object_r:thermal_prop:s0
+NV_THERM_CPU_TRIP                u:object_r:thermal_prop:s0
+NV_THERM_SKIN_TEMP               u:object_r:thermal_prop:s0
+NV_THERM_SKIN_TRIP               u:object_r:thermal_prop:s0

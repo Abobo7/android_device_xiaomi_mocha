@@ -6,7 +6,6 @@
 #documentation without an express license agreement from NVIDIA Corporation
 #is strictly prohibited.
 
-import init.${ro.boot.modem}.rc
 import init.comms.rc
 
 on early-init
@@ -14,15 +13,11 @@ on early-init
 
 on init
     mkdir /mnt/shell/emulated 0700 shell shell
-    mkdir /storage/emulated 0555 root root
     mkdir /mnt/media_rw/sdcard1 0700 media_rw media_rw
-    mkdir /storage/sdcard1 0700 root root
 
     # create directory for mounting usb drives
     mkdir /mnt/media_rw/usbdrive 0700 media_rw media_rw
-    mkdir /storage/usbdrive 0700 root root
-    symlink /mnt/media_rw/usbdrive /storage/usbdrive
-    symlink /mnt/media_rw/usbdrive /usbdrive
+    # /usbdrive is baked into the read-only root via BoardConfig.
 
     # create directory for mounting calibration partition
     mkdir /mnt/factory 0666 system system
@@ -37,7 +32,6 @@ on init
 
 on fs
 # mount console ramooops
-   mount pstore pstore /sys/fs/pstore
 
 on post-fs-data
     # We chown/chmod /mnt/usercalib again so because mount is run as root + defaults
@@ -186,11 +180,6 @@ on boot
 # TLK storage service
 import init.tlk.rc
 
-service set_sensor_perm /system/bin/set_light_sensor_perm.sh
-    class main
-    user root
-    group root
-    oneshot
 
 on property:ro.debuggable=1
     # EMC debug interface
@@ -240,30 +229,17 @@ on property:ro.debuggable=1
     chmod 0666 /sys/class/invensense/mpu/dbg_reg
     chmod 0666 /sys/class/invensense/mpu/dbg_dat
 
-# bugreport is triggered by the VOLUME-DOWN and VOLUME-UP keys
-service bugreport /system/bin/dumpstate -d -p -B -o /data/data/com.android.shell/files/bugreports/bugreport
-    class main
-    disabled
-    oneshot
-    keycodes 116 115 114
 
 # unified scaling setup
 import init.ussrd.rc
 
-service cvc /vendor/bin/cvc
-    user system
-    group system
-    class main
 
-# Enable rbe
-# thresIncr:50  thresIncrCntMax:6  thresDecr:70  thresDecrCntMax:2
-# The change from default is the thresDecrCntMax.  Default is 3.
-service wlbwservice /system/bin/wlbwservice -t 50 6 70 2
-    class main
-    user system
-    group system inet net_admin
 
 # Thie yields each tegra wdt expiration to be at 7.5 secs and fourth expiration for reboot at 30 secs.
 service watchdogd /sbin/watchdogd 10 20
     class core
     seclabel u:r:watchdogd:s0
+
+# Mocha uses ISL29035 permissions from ueventd.tn8.rc. The generic
+# set_light_sensor_perm, CVC and WLAN RBE services have no mocha binaries.
+# bugreport is supplied by Android init; do not redefine that service.

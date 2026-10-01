@@ -1,21 +1,35 @@
+diff --git a/camera/provider/2.4/default/Android.bp b/camera/provider/2.4/default/Android.bp
+index be8446a..be103f5 100644
+--- a/camera/provider/2.4/default/Android.bp
++++ b/camera/provider/2.4/default/Android.bp
+@@ -152,6 +152,8 @@ cc_defaults {
+         "android.hidl.memory@1.0",
+         "libbinder",
+         "libcamera_metadata",
++        // Q moved the process target-SDK setter out of libdl.
++        "libdl_android",
+         "libhardware",
+         "libhidlbase",
+         "libhidltransport",
 diff --git a/camera/provider/2.4/default/service.cpp b/camera/provider/2.4/default/service.cpp
-index 7eeb6379..96ba8ec6 100644
+index 4475f7d..1ce6c5d 100644
 --- a/camera/provider/2.4/default/service.cpp
 +++ b/camera/provider/2.4/default/service.cpp
-@@ -20,6 +20,11 @@
+@@ -24,6 +24,12 @@
+ #include <binder/ProcessState.h>
  #include <hidl/LegacySupport.h>
  
- #include <binder/ProcessState.h>
 +#include <string.h>
 +#include <sys/system_properties.h>
 +
-+// Platform libdl entry point, intentionally not an NDK application API.
-+extern "C" void android_set_application_target_sdk_version(uint32_t target);
- 
- using android::hardware::camera::provider::V2_4::ICameraProvider;
++// Platform libdl_android entry point, intentionally not an NDK application API.
++extern "C" void android_set_application_target_sdk_version(int target);
++
+ using android::status_t;
+ using android::hardware::defaultLazyPassthroughServiceImplementation;
  using android::hardware::defaultPassthroughServiceImplementation;
-@@ -29,6 +34,20 @@ int main()
-     ALOGI("Camera provider Service is starting.");
+@@ -40,7 +46,21 @@ int main()
+     ALOGI("CameraProvider@2.4 legacy service is starting.");
      // The camera HAL may communicate to other vendor components via
      // /dev/vndbinder
 -    android::ProcessState::initWithDriver("/dev/vndbinder");
@@ -25,14 +39,15 @@ index 7eeb6379..96ba8ec6 100644
 +    char legacyBinder[PROP_VALUE_MAX] = {};
 +    __system_property_get("ro.camera.legacy_system_binder", legacyBinder);
 +    const char* driver = strcmp(legacyBinder, "true") == 0 ? "/dev/binder" : "/dev/vndbinder";
++    android::ProcessState::initWithDriver(driver);
++    // Stock libFaceProc.so uses text relocations, rejected by the Android 10
++    // linker; allow the camera provider process to load it for devices that
++    // opt in. Pre-M apps got this implicitly, hence targetSdkVersion 22.
 +    char legacyTextRelocations[PROP_VALUE_MAX] = {};
 +    __system_property_get("ro.camera.legacy_text_relocations", legacyTextRelocations);
 +    if (strcmp(legacyTextRelocations, "true") == 0) {
-+        // Stock 32-bit camera dependencies have text relocations. Apply
-+        // compatibility before loading HALs or starting provider threads.
 +        android_set_application_target_sdk_version(22);
-+        ALOGI("Using pre-M linker compatibility for legacy camera HAL");
 +    }
-+    android::ProcessState::initWithDriver(driver);
-     return defaultPassthroughServiceImplementation<ICameraProvider>("legacy/0", /*maxThreads*/ 6);
- }
+     status_t status;
+     if (kLazyService) {
+         status = defaultLazyPassthroughServiceImplementation<ICameraProvider>("legacy/0",

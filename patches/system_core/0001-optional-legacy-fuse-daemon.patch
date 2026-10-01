@@ -1,8 +1,8 @@
 diff --git a/sdcard/sdcard.cpp b/sdcard/sdcard.cpp
-index dc36596b1..1c82f0f9c 100644
+index 2b35819..a9e3ced 100644
 --- a/sdcard/sdcard.cpp
 +++ b/sdcard/sdcard.cpp
-@@ -214,6 +214,11 @@ static int usage() {
+@@ -233,6 +233,11 @@ static int usage() {
  }
  
  int main(int argc, char **argv) {

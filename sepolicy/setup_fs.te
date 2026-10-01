@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-type setup_fs, domain;
-type setup_fs_exec, exec_type, file_type;
+type setup_fs, domain, coredomain;
+type setup_fs_exec, exec_type, file_type, system_file_type;
 
 init_daemon_domain(setup_fs)
 

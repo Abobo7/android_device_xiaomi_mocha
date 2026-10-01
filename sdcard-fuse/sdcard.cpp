@@ -212,31 +212,37 @@ static void* start_handler(void* data) {
 }
 
 static void run(const char* source_path, const char* label, uid_t uid,
-        gid_t gid, userid_t userid, bool multi_user, bool full_write) {
+        gid_t gid, userid_t userid, bool multi_user, bool full_write, bool unshared_obb) {
     struct fuse_global global;
     struct fuse fuse_default;
     struct fuse fuse_read;
     struct fuse fuse_write;
+    struct fuse fuse_full;
     struct fuse_handler handler_default;
     struct fuse_handler handler_read;
     struct fuse_handler handler_write;
+    struct fuse_handler handler_full;
     pthread_t thread_default;
     pthread_t thread_read;
     pthread_t thread_write;
+    pthread_t thread_full;
 
     memset(&global, 0, sizeof(global));
     memset(&fuse_default, 0, sizeof(fuse_default));
     memset(&fuse_read, 0, sizeof(fuse_read));
     memset(&fuse_write, 0, sizeof(fuse_write));
+    memset(&fuse_full, 0, sizeof(fuse_full));
     memset(&handler_default, 0, sizeof(handler_default));
     memset(&handler_read, 0, sizeof(handler_read));
     memset(&handler_write, 0, sizeof(handler_write));
+    memset(&handler_full, 0, sizeof(handler_full));
 
     pthread_mutex_init(&global.lock, NULL);
     global.package_to_appid = new AppIdMap;
     global.uid = uid;
     global.gid = gid;
     global.multi_user = multi_user;
+    global.unshared_obb = unshared_obb;
     global.next_generation = 0;
     global.inode_ctr = 1;
 
@@ -262,22 +268,27 @@ static void run(const char* source_path, const char* label, uid_t uid,
     fuse_default.global = &global;
     fuse_read.global = &global;
     fuse_write.global = &global;
+    fuse_full.global = &global;
 
     global.fuse_default = &fuse_default;
     global.fuse_read = &fuse_read;
     global.fuse_write = &fuse_write;
+    global.fuse_full = &fuse_full;
 
     snprintf(fuse_default.dest_path, PATH_MAX, "/mnt/runtime/default/%s", label);
     snprintf(fuse_read.dest_path, PATH_MAX, "/mnt/runtime/read/%s", label);
     snprintf(fuse_write.dest_path, PATH_MAX, "/mnt/runtime/write/%s", label);
+    snprintf(fuse_full.dest_path, PATH_MAX, "/mnt/runtime/full/%s", label);
 
     handler_default.fuse = &fuse_default;
     handler_read.fuse = &fuse_read;
     handler_write.fuse = &fuse_write;
+    handler_full.fuse = &fuse_full;
 
     handler_default.token = 0;
     handler_read.token = 1;
     handler_write.token = 2;
+    handler_full.token = 3;
 
     umask(0);
 
@@ -286,7 +297,8 @@ static void run(const char* source_path, const char* label, uid_t uid,
          * permissions are completely masked off. */
         if (fuse_setup(&fuse_default, AID_SDCARD_RW, 0006)
                 || fuse_setup(&fuse_read, AID_EVERYBODY, 0027)
-                || fuse_setup(&fuse_write, AID_EVERYBODY, full_write ? 0007 : 0027)) {
+                || fuse_setup(&fuse_write, AID_EVERYBODY, full_write ? 0007 : 0027)
+                || fuse_setup(&fuse_full, AID_EVERYBODY, 0007)) {
             PLOG(FATAL) << "failed to fuse_setup";
         }
     } else {
@@ -295,7 +307,8 @@ static void run(const char* source_path, const char* label, uid_t uid,
          * deep inside attr_from_stat(). */
         if (fuse_setup(&fuse_default, AID_SDCARD_RW, 0006)
                 || fuse_setup(&fuse_read, AID_EVERYBODY, full_write ? 0027 : 0022)
-                || fuse_setup(&fuse_write, AID_EVERYBODY, full_write ? 0007 : 0022)) {
+                || fuse_setup(&fuse_write, AID_EVERYBODY, full_write ? 0007 : 0022)
+                || fuse_setup(&fuse_full, AID_EVERYBODY, 0007)) {
             PLOG(FATAL) << "failed to fuse_setup";
         }
     }
@@ -303,13 +316,14 @@ static void run(const char* source_path, const char* label, uid_t uid,
     // Will abort if priv-dropping fails.
     drop_privs(uid, gid);
 
-    if (multi_user) {
+    if (multi_user && !unshared_obb) {
         fs_prepare_dir(global.obb_path, 0775, uid, gid);
     }
 
     if (pthread_create(&thread_default, NULL, start_handler, &handler_default)
             || pthread_create(&thread_read, NULL, start_handler, &handler_read)
-            || pthread_create(&thread_write, NULL, start_handler, &handler_write)) {
+            || pthread_create(&thread_write, NULL, start_handler, &handler_write)
+            || pthread_create(&thread_full, NULL, start_handler, &handler_full)) {
         LOG(FATAL) << "failed to pthread_create";
     }
 
@@ -463,13 +477,14 @@ extern "C" int sdcard_main(int argc, char **argv) {
     userid_t userid = 0;
     bool multi_user = false;
     bool full_write = false;
+    bool unshared_obb = false;
     bool derive_gid = false;
     int i;
     struct rlimit rlim;
     int fs_version;
 
     int opt;
-    while ((opt = getopt(argc, argv, "u:g:U:mwGi")) != -1) {
+    while ((opt = getopt(argc, argv, "u:g:U:mwGio")) != -1) {
         switch (opt) {
             case 'u':
                 uid = strtoul(optarg, NULL, 10);
@@ -488,6 +503,9 @@ extern "C" int sdcard_main(int argc, char **argv) {
                 break;
             case 'i':
                 // Pie sdcardfs default_normal flag: FUSE derives its own permissions.
+                break;
+            case 'o':
+                unshared_obb = true;
                 break;
             case 'G':
                 derive_gid = true;
@@ -537,7 +555,7 @@ extern "C" int sdcard_main(int argc, char **argv) {
     if (should_use_sdcardfs()) {
         run_sdcardfs(source_path, label, uid, gid, userid, multi_user, full_write, derive_gid);
     } else {
-        run(source_path, label, uid, gid, userid, multi_user, full_write);
+        run(source_path, label, uid, gid, userid, multi_user, full_write, unshared_obb);
     }
     return 1;
 }

@@ -1,0 +1,214 @@
+[
+  {
+    "project": "frameworks/native",
+    "base_commit": "cff66a74a4940821634fa4a07b3e6da550a41076",
+    "patches": [
+      {
+        "path": "patches/frameworks_native/0001-restore-stock-graphicbuffer-abi.patch",
+        "sha256": "bb64c0e7a3a86f95bec628d5f39f171c8a3fa57ac68ac2499159280a7543f279"
+      },
+      {
+        "path": "patches/frameworks_native/0002-force-client-composition-option.patch",
+        "sha256": "470e7d4395fd06904eecc5a01442d07d22e3104035c42b67ab0806832ccc6d8a"
+      },
+      {
+        "path": "patches/frameworks_native/0003-export-legacy-fence-lifetime.patch",
+        "sha256": "603e2666f700a55cbd73a3f350e80f712a8d632dce9c5b41b35e418f26a57a06"
+      },
+      {
+        "path": "patches/frameworks_native/0004-preserve-legacy-parcel-allocation.patch",
+        "sha256": "fcf4caf9c339ca161b5c2158be725b1c5bf24ca00d61dee11486b092555ed040"
+      },
+      {
+        "path": "patches/frameworks_native/0015-r15-consolidated-repairs.patch",
+        "sha256": "deb9788fcbe82e231119bbccce76086243356716c1f18ca013c43d238956a373"
+      }
+    ]
+  },
+  {
+    "project": "frameworks/av",
+    "base_commit": "c2725f53d8e9d6dfa5b853124d21249d2db106da",
+    "patches": [
+      {
+        "path": "patches/frameworks_av/0001-legacy-gralloc-codec2.patch",
+        "sha256": "78508f85a94cdbffeb5afd291c4e9e640bdfef078a7ed61434651370710ecfe8"
+      },
+      {
+        "path": "patches/frameworks_av/0002-nvidia-avc-output-flags.patch",
+        "sha256": "098b25a97e865c6ec66b04eb7a248f8832f2de64b86c4d31b190d685ba556b0e"
+      },
+      {
+        "path": "patches/frameworks_av/0015-r15-consolidated-repairs.patch",
+        "sha256": "20a924a9778e968803a722330432aa33570c1532fd3e0edc2b4128c7c3d8eeec"
+      }
+    ]
+  },
+  {
+    "project": "bionic",
+    "base_commit": "40e6fdba0b80a99c240603eecfb5b1d7c2ee1ed2",
+    "patches": [
+      {
+        "path": "patches/bionic/0001-fcntl-fortify-old-kernel-headers.patch",
+        "sha256": "2294694951a3cd62a2905d8fe85112c0b8b6acb29833da374cd127197357390d"
+      }
+    ]
+  },
+  {
+    "project": "system/core",
+    "base_commit": "6d27634866be5b646a8cea1f9abeae902fd831e5",
+    "patches": [
+      {
+        "path": "patches/system_core/0001-optional-legacy-fuse-daemon.patch",
+        "sha256": "604bb0a70fc886d293c4ff36d80a54b7a778571fadbd54f6a00bc51ab74dc902"
+      },
+      {
+        "path": "patches/system_core/0002-mocha-stock-boot-configuration.patch",
+        "sha256": "620e7a4f095c51f72ddcb0ae0f1bc40d57594d3d368b5a16f233657122b89292"
+      },
+      {
+        "path": "patches/system_core/0003-mocha-stock-task-profiles.patch",
+        "sha256": "d83bba984bc1823310565de9138225d447c125958d9f5be1d45c2537281749c9"
+      },
+      {
+        "path": "patches/system_core/0015-r15-consolidated-repairs.patch",
+        "sha256": "57256438c5da63e5e09e741de8125e7ca2c46b59d4aff67429caee6af137f83b"
+      }
+    ]
+  },
+  {
+    "project": "system/vold",
+    "base_commit": "209a1118a4fc8a30773bb3bb5c319a5956b0d7f9",
+    "patches": [
+      {
+        "path": "patches/system_vold/0001-retain-userspace-fuse-lifecycle.patch",
+        "sha256": "a1ad38f978cfd03ccb9c852eb88fab0f48b78212bc126bd4eb2d3b804067aeb0"
+      }
+    ]
+  },
+  {
+    "project": "frameworks/base",
+    "base_commit": "3eb409bcc54f50cc05b7e252ef235519d2fb20aa",
+    "patches": [
+      {
+        "path": "patches/frameworks_base/0002-legacy-egl-display-resilience.patch",
+        "sha256": "2d289d329b63a7660feb32e94fe714d9d68b60970564c5ded861d89380b897fd"
+      },
+      {
+        "path": "patches/frameworks_base/0015-r15-consolidated-repairs.patch",
+        "sha256": "ca0569566f32cd59ee47f64b40310150e96b2b05512d54e82f1bb2d6e9de6440"
+      }
+    ]
+  },
+  {
+    "project": "hardware/interfaces",
+    "base_commit": "02951860e9c95f19384fa07522925537d8c17a18",
+    "patches": [
+      {
+        "path": "patches/hardware_interfaces/0001-preserve-tegra-gralloc-handle-references.patch",
+        "sha256": "b584bf98eb4dd0c9c96a2d134307400cb7368be208501ee2a614788b6aabe45b"
+      },
+      {
+        "path": "patches/hardware_interfaces/0002-allow-legacy-camera-system-binder.patch",
+        "sha256": "c604ec8aba8253431de5c0cfcf96b0ca0b1840e8c7c2e3e705da7a4ed409c6fb"
+      },
+      {
+        "path": "patches/hardware_interfaces/0003-legacy-factory-bluetooth-address.patch",
+        "sha256": "bda3ce0e94dcd9d47e3cab67a00c16031ad1fcc31113c12dd34b507b3e7f5496"
+      },
+      {
+        "path": "patches/hardware_interfaces/0015-r15-consolidated-repairs.patch",
+        "sha256": "16e94f15622a27dc181b86c9ae806cac1e90f659ff4a2c804fd4ef501cfced58"
+      }
+    ]
+  },
+  {
+    "project": "hardware/nvidia/power",
+    "base_commit": "06b0ef51569566c0e82f9ae9afbcbcfdf0371989",
+    "patches": [
+      {
+        "path": "patches/hardware_nvidia_power/0001-android9-powerhal-compatibility.patch",
+        "sha256": "6e6e907c5219561c8e0f45c2ce2e5ef53cfa9783d98fe5fedb50136ac745f21b"
+      }
+    ]
+  },
+  {
+    "project": "hardware/broadcom/libbt",
+    "base_commit": "27def02df7dfa71fa8ae41e3c644ec9f747da106",
+    "patches": [
+      {
+        "path": "patches/hardware_broadcom_libbt/0001-restore-v4l2-transport.patch",
+        "sha256": "0cc11664325c8e5ebcd06a2f57e08d4466672aeee311f36b2a426e9143f35517"
+      }
+    ]
+  },
+  {
+    "project": "packages/apps/Snap",
+    "base_commit": "61d0ba66d926d57eb11031337d2a14eb0ce620d9",
+    "patches": [
+      {
+        "path": "patches/packages_apps_Snap/0001-force-camera-release-on-module-switch.patch",
+        "sha256": "ca34d219c3a7530b439738a46b4708f77ed06caa34305ceec0393041e35afd5a"
+      }
+    ]
+  },
+  {
+    "project": "external/skia",
+    "base_commit": "6cf1bea1d234440b1fd4291ed50d4b178a53739a",
+    "patches": [
+      {
+        "path": "patches/external_skia/0002-key-program-binaries-by-shader-language.patch",
+        "sha256": "6ec58c0b0fbe4863faa54a1f034acc0b079e98eb7aff1428b6a6da09c080f150"
+      }
+    ]
+  },
+  {
+    "project": "system/ashmemd",
+    "base_commit": "540d579f3079b1796414f12118632c6adc9387e3",
+    "patches": [
+      {
+        "path": "patches/system_ashmemd/0015-r15-consolidated-repairs.patch",
+        "sha256": "67de17199679ee3f68865c763268df278d6b205af6d8429ad9c6f7d087ee88ce"
+      }
+    ]
+  },
+  {
+    "project": "system/apex",
+    "base_commit": "a41373acd02cc04e2ffa4088eb6ee0a964fd3dec",
+    "patches": [
+      {
+        "path": "patches/system_apex/0015-r15-consolidated-repairs.patch",
+        "sha256": "4aadce492e9c727f5d4dcd50303693ef828882600ff7d9ca79fe26929b595e80"
+      }
+    ]
+  },
+  {
+    "project": "packages/modules/ExtServices",
+    "base_commit": "3e73648fbde57119c7a707e5344cf8f2d55b4dfb",
+    "patches": [
+      {
+        "path": "patches/packages_modules_ExtServices/0015-r15-consolidated-repairs.patch",
+        "sha256": "64c03608b9ace3830a31991d391f0ac51061e8de6c5411fbb81f9c7308c819ca"
+      }
+    ]
+  },
+  {
+    "project": "packages/providers/MediaProvider",
+    "base_commit": "4a76c7fef797ae930db774cea0df8fecd6742a56",
+    "patches": [
+      {
+        "path": "patches/packages_providers_MediaProvider/0015-r15-consolidated-repairs.patch",
+        "sha256": "b179b2f005a0e6fc8820e548aeab96e639c8466db973df013a72b261479de899"
+      }
+    ]
+  },
+  {
+    "project": "system/sepolicy",
+    "base_commit": "b052c214f3ca11d2bbe09b6d34e0ce693fdc8d92",
+    "patches": [
+      {
+        "path": "patches/system_sepolicy/0015-r15-consolidated-repairs.patch",
+        "sha256": "eff452d10fdb8ed889d4b585ea8d6c8390686a28811a263ce8179765511f12a2"
+      }
+    ]
+  }
+]

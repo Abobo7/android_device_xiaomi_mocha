@@ -106,3 +106,21 @@ LOCAL_C_INCLUDES := frameworks/av/media/libstagefright/include frameworks/native
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE_PATH := $(TARGET_OUT_DATA_NATIVE_TESTS)/mediatest
 include $(BUILD_EXECUTABLE)
+
+# Native regression test for the allocation size used by stock NVIDIA clients.
+include $(CLEAR_VARS)
+LOCAL_MODULE := mocha_parcel_abi_test
+LOCAL_SRC_FILES := tests/parcel_abi.cpp
+LOCAL_SHARED_LIBRARIES := libbinder libutils
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_PATH := $(TARGET_OUT_DATA_NATIVE_TESTS)/mocha_parcel_abi_test
+include $(BUILD_EXECUTABLE)
+
+# Exercise kernel primitives required by ART JIT and Codec2 on real hardware.
+include $(CLEAR_VARS)
+LOCAL_MODULE := mocha_kernel_features_test
+LOCAL_SRC_FILES := tests/kernel_features.cpp
+LOCAL_SHARED_LIBRARIES := libion
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE_PATH := $(TARGET_OUT_DATA_NATIVE_TESTS)/mocha_kernel_features_test
+include $(BUILD_EXECUTABLE)

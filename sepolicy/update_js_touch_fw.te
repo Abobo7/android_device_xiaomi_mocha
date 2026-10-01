@@ -13,8 +13,8 @@
 # limitations under the License.
 
 
-type update_js_touch_fw, domain;
-type update_js_touch_fw_exec, exec_type, file_type;
+type update_js_touch_fw, domain, coredomain;
+type update_js_touch_fw_exec, exec_type, file_type, system_file_type;
 
 init_daemon_domain(update_js_touch_fw)
 

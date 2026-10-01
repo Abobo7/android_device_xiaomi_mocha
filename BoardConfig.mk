@@ -66,6 +66,7 @@ TARGET_POWERHAL_VARIANT := tegra
 BOARD_USES_GENERIC_AUDIO := false
 BOARD_USES_ALSA_AUDIO := true
 BOARD_USES_TINYHAL_AUDIO := true
+USE_XML_AUDIO_POLICY_CONF := 1
 
 # Bluetooth
 BOARD_HAVE_BLUETOOTH := true
@@ -144,6 +145,14 @@ WIFI_DRIVER_FW_PATH_PARAM        := "/sys/module/bcmdhd/parameters/firmware_path
 
 # SELinux
 BOARD_SEPOLICY_DIRS += device/xiaomi/mocha/sepolicy
+
+# Q mounts the root from read-only system.img. Stock NVIDIA paths must
+# exist in the image; early-init cannot create symlinks there anymore.
+BOARD_ROOT_EXTRA_SYMLINKS += \
+    /system/lib/egl:gl \
+    /system/vendor/lbh:lbh \
+    /mnt/media_rw/usbdrive:usbdrive \
+    /data/misc/sensors:persist
 
 # Vendor partition is still inside system (legacy non-Treble)
 TARGET_COPY_OUT_VENDOR := system/vendor

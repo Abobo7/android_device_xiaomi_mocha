@@ -1,10 +1,10 @@
 diff --git a/libs/hwui/renderthread/EglManager.cpp b/libs/hwui/renderthread/EglManager.cpp
-index 16d77364..ba39c694 100644
+index 159cf497..cb27c49c 100644
 --- a/libs/hwui/renderthread/EglManager.cpp
 +++ b/libs/hwui/renderthread/EglManager.cpp
-@@ -34,6 +34,14 @@
- #include <GrContextOptions.h>
- #include <gl/GrGLInterface.h>
+@@ -36,6 +36,14 @@
+ 
+ #define GLES_VERSION 2
  
 +// Tegra's default display cannot be rebuilt after eglTerminate followed by
 +// eglReleaseThread. Keep only the thread state; still release the display,
@@ -14,11 +14,11 @@ index 16d77364..ba39c694 100644
 +    return value;
 +}
 +
- #ifdef HWUI_GLES_WRAP_ENABLED
- #include "debug/GlesDriver.h"
- #endif
-@@ -335,7 +343,9 @@ void EglManager::destroy() {
-     eglDestroySurface(mEglDisplay, mPBufferSurface);
+ // Android-specific addition that is used to show when frames began in systrace
+ EGLAPI void EGLAPIENTRY eglBeginFrame(EGLDisplay dpy, EGLSurface surface);
+ 
+@@ -376,7 +384,9 @@ void EglManager::destroy() {
+     }
      eglMakeCurrent(mEglDisplay, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
      eglTerminate(mEglDisplay);
 -    eglReleaseThread();
@@ -29,10 +29,10 @@ index 16d77364..ba39c694 100644
      mEglDisplay = EGL_NO_DISPLAY;
      mEglContext = EGL_NO_CONTEXT;
 diff --git a/services/core/java/com/android/server/wm/TaskSnapshotPersister.java b/services/core/java/com/android/server/wm/TaskSnapshotPersister.java
-index 7b047a80..003bba42 100644
+index 9d562637..84ff6fe5 100644
 --- a/services/core/java/com/android/server/wm/TaskSnapshotPersister.java
 +++ b/services/core/java/com/android/server/wm/TaskSnapshotPersister.java
-@@ -340,6 +340,12 @@ class TaskSnapshotPersister {
+@@ -394,6 +394,12 @@ class TaskSnapshotPersister {
              }
  
              final Bitmap swBitmap = bitmap.copy(Config.ARGB_8888, false /* isMutable */);
@@ -42,6 +42,6 @@ index 7b047a80..003bba42 100644
 +                Slog.e(TAG, "Failed to copy task snapshot to a software bitmap");
 +                return false;
 +            }
-             final File reducedFile = getReducedResolutionBitmapFile(mTaskId, mUserId);
              final Bitmap reduced = mSnapshot.isReducedResolution()
                      ? swBitmap
+                     : Bitmap.createScaledBitmap(swBitmap,

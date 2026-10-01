@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # IKEv2 key management daemon
-type charon, domain;
-type charon_exec, exec_type, file_type;
+type charon, domain, coredomain;
+type charon_exec, exec_type, file_type, system_file_type;
 
 init_daemon_domain(charon)
 typeattribute charon mlstrustedsubject;
@@ -27,7 +27,7 @@ allow charon tun_device:chr_file rw_file_perms;
 allow charon cgroup:dir { add_name create };
 allow charon kernel:system module_request;
 allow charon proc_net:file write;
-allow charon radio_device:chr_file rw_file_perms;
+# mocha has no cellular modem; charon does not access radio device nodes.
 
 allow charon self:key_socket create_socket_perms_no_ioctl;
 allow charon self:tun_socket create_socket_perms_no_ioctl;

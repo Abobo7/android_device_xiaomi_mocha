@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # wifi_loader - wifi loader which modifies /data/misc/wifi/*
-type wifi_loader, domain;
-type wifi_loader_exec, exec_type, file_type;
+type wifi_loader, domain, coredomain;
+type wifi_loader_exec, exec_type, file_type, system_file_type;
 
 init_daemon_domain(wifi_loader)
 set_prop(wifi_loader, system_prop)

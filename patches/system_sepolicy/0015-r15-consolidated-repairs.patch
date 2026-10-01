@@ -1,0 +1,24 @@
+--- a/prebuilts/api/29.0/private/ashmemd.te
++++ b/prebuilts/api/29.0/private/ashmemd.te
+@@ -7,3 +7,9 @@
+ add_service(ashmemd, ashmem_device_service)
+ 
+ allow ashmemd ashmem_device:chr_file rw_file_perms;
++
++# Non-Treble HALs link system libcutils and use the platform ashmem broker.
++not_full_treble(`
++  allow { hal_audio_server hal_graphics_composer_server hal_graphics_allocator_server }
++      ashmem_device_service:service_manager find;
++')
+--- a/private/ashmemd.te
++++ b/private/ashmemd.te
+@@ -7,3 +7,9 @@
+ add_service(ashmemd, ashmem_device_service)
+ 
+ allow ashmemd ashmem_device:chr_file rw_file_perms;
++
++# Non-Treble HALs link system libcutils and use the platform ashmem broker.
++not_full_treble(`
++  allow { hal_audio_server hal_graphics_composer_server hal_graphics_allocator_server }
++      ashmem_device_service:service_manager find;
++')

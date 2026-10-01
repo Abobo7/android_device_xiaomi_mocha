@@ -1,0 +1,2 @@
+allow hal_sensors_default mocha_sensor_data_file:dir create_dir_perms;
+allow hal_sensors_default mocha_sensor_data_file:file create_file_perms;

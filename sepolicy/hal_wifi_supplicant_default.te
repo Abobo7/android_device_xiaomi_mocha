@@ -29,4 +29,4 @@ allow hal_wifi_supplicant_default proc_net_wifi:file rw_file_perms;
 allow system_server hal_wifi_supplicant_default:unix_dgram_socket { read sendto };
 
 # access wifi firmware files
-r_dir_file(hal_wifi_supplicant_default, vendor_firmware_wifi_file)
+r_dir_file(hal_wifi_supplicant_default, { vendor_firmware_wifi_file system_firmware_wifi_file })

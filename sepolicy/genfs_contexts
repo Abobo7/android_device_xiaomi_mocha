@@ -29,3 +29,5 @@ genfscon proc /sys/net/ipv6/conf/wlan0/drop_unicast_in_l2_multicast	u:object_r:p
 genfscon proc /sys/net/ipv4/conf/wlan0/drop_gratuitous_arp		u:object_r:proc_net_wifi:s0
 genfscon proc /sys/net/ipv6/conf/wlan0/drop_unsolicited_na		u:object_r:proc_net_wifi:s0
 genfscon debugfs /nvmap/handles_by_pid     u:object_r:debugfs_nvmap:s0
+
+genfscon debugfs /nvmap/memtrack u:object_r:debugfs_nvmap:s0

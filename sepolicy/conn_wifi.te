@@ -1,7 +1,7 @@
 # mocha-specific policy for conn_init (real wifi/bt MAC loader)
 
-type conn_wifi, domain;
-type conn_wifi_exec, exec_type, file_type;
+type conn_wifi, domain, coredomain;
+type conn_wifi_exec, exec_type, file_type, system_file_type;
 
 init_daemon_domain(conn_wifi)
 

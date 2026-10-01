@@ -1,0 +1,50 @@
+--- a/audio/common/all-versions/default/service/service.cpp
++++ b/audio/common/all-versions/default/service/service.cpp
+@@ -28,6 +28,8 @@
+ #include <android/hardware/soundtrigger/2.1/ISoundTriggerHw.h>
+ #include <android/hardware/soundtrigger/2.2/ISoundTriggerHw.h>
+ #include <binder/ProcessState.h>
++#include <sys/system_properties.h>
++#include <string.h>
+ #include <cutils/properties.h>
+ #include <hidl/HidlTransportSupport.h>
+ #include <hidl/LegacySupport.h>
+@@ -37,7 +39,12 @@
+ using android::OK;
+ 
+ int main(int /* argc */, char* /* argv */ []) {
+-    ::android::ProcessState::initWithDriver("/dev/vndbinder");
++    ::android::ProcessState::initWithDriver([] {
++        char trebleEnabled[PROP_VALUE_MAX] = {};
++        // Non-Treble HALs share system libraries and their Binder services.
++        __system_property_get("ro.treble.enabled", trebleEnabled);
++        return strcmp(trebleEnabled, "true") == 0 ? "/dev/vndbinder" : "/dev/binder";
++    }());
+     // start a threadpool for vndbinder interactions
+     ::android::ProcessState::self()->startThreadPool();
+ 
+--- a/graphics/composer/2.1/default/service.cpp
++++ b/graphics/composer/2.1/default/service.cpp
+@@ -21,6 +21,8 @@
+ #include <android/hardware/graphics/composer/2.1/IComposer.h>
+ 
+ #include <binder/ProcessState.h>
++#include <sys/system_properties.h>
++#include <string.h>
+ #include <hidl/LegacySupport.h>
+ 
+ using android::hardware::graphics::composer::V2_1::IComposer;
+@@ -28,7 +30,12 @@
+ 
+ int main() {
+     // the conventional HAL might start binder services
+-    android::ProcessState::initWithDriver("/dev/vndbinder");
++    android::ProcessState::initWithDriver([] {
++        char trebleEnabled[PROP_VALUE_MAX] = {};
++        // Non-Treble HALs share system libraries and their Binder services.
++        __system_property_get("ro.treble.enabled", trebleEnabled);
++        return strcmp(trebleEnabled, "true") == 0 ? "/dev/vndbinder" : "/dev/binder";
++    }());
+     android::ProcessState::self()->setThreadPoolMaxThreadCount(4);
+     android::ProcessState::self()->startThreadPool();
+ 

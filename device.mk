@@ -40,6 +40,7 @@ DEVICE_PACKAGE_OVERLAYS += \
 # Ramdisk
 PRODUCT_PACKAGES += \
     fstab.tn8 \
+    fstab.tn8.first_stage \
     init.cal.rc \
     init.comms.rc \
     init.icera.rc \
@@ -53,6 +54,7 @@ PRODUCT_PACKAGES += \
     init.tn8.usb.rc \
     init.tn8_common.rc \
     init.ussrd.rc \
+    ussr_setup.sh \
     power.tn8.rc \
     ueventd.tn8.rc
 
@@ -100,8 +102,12 @@ PRODUCT_COPY_FILES += \
 
 # Audio
 PRODUCT_COPY_FILES += \
-    $(LOCAL_PATH)/audio/audio_policy.conf:system/etc/audio_policy.conf \
-    $(LOCAL_PATH)/audio/audio.mocha.xml:system/etc/audio.mocha.xml
+    $(LOCAL_PATH)/audio/audio_policy_configuration.xml:system/etc/audio_policy_configuration.xml \
+    $(LOCAL_PATH)/audio/audio.mocha.xml:system/etc/audio.mocha.xml \
+    frameworks/av/services/audiopolicy/config/a2dp_audio_policy_configuration.xml:system/etc/a2dp_audio_policy_configuration.xml \
+    frameworks/av/services/audiopolicy/config/usb_audio_policy_configuration.xml:system/etc/usb_audio_policy_configuration.xml \
+    frameworks/av/services/audiopolicy/config/audio_policy_volumes.xml:system/etc/audio_policy_volumes.xml \
+    frameworks/av/services/audiopolicy/config/default_volume_tables.xml:system/etc/default_volume_tables.xml
 
 # Android 8.1/9 wrappers. Composer 2.1 adapts the stock HWC 1.1 module.
 # Mapper is passthrough; buffers are served over hwbinder by the allocator.
@@ -140,6 +146,7 @@ PRODUCT_COPY_FILES += \
 PRODUCT_PACKAGES += \
     android.hardware.bluetooth@1.0-impl \
     android.hardware.bluetooth@1.0-service \
+    brcm-uim-sysfs \
     libbt-vendor
 
 # The keymaster 3.0 wrapper loads the stock keystore.tegra legacy HAL.
@@ -147,11 +154,8 @@ PRODUCT_PACKAGES += \
     android.hardware.keymaster@3.0-impl \
     android.hardware.keymaster@3.0-service
 
-# FM
-PRODUCT_PACKAGES += \
-    FMRadio \
-    brcm-uim-sysfs \
-    libfmjni
+# FMRadio is not shipped. The imported brcm-uim-sysfs module above is
+# still required for Bluetooth firmware and the V4L2 transport.
 
 # Camera
 PRODUCT_COPY_FILES += \
@@ -201,11 +205,13 @@ PRODUCT_PACKAGES += \
 PRODUCT_CHARACTERISTICS := tablet
 
 # Keep authenticated ADB available during first boot of development builds.
-# The 3.10 kernel lacks FunctionFS AIO support; use adbd synchronous I/O.
+# The 3.10 kernel lacks FunctionFS AIO support. Q defaults to a new USB
+# implementation; choose legacy first, then enable its synchronous I/O path.
 # Define USB defaults in one property file so build.prop cannot override them.
 ifneq ($(filter eng userdebug,$(TARGET_BUILD_VARIANT)),)
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
     persist.sys.usb.config=mtp,adb \
+    ro.adb.nonblocking_ffs=false \
     sys.usb.ffs.aio_compat=true
 # Use the standard logcatd service; it starts only after /data is mounted.
 PRODUCT_PROPERTY_OVERRIDES += \
@@ -266,3 +272,6 @@ $(call inherit-product-if-exists, vendor/xiaomi/mocha/consolemode-blobs.mk)
 PRODUCT_COPY_FILES += \
     device/xiaomi/mocha/seccomp/mediacodec.policy:$(TARGET_COPY_OUT_VENDOR)/etc/seccomp_policy/mediacodec.policy
 
+
+# Stock nvmap accounting (the Shield debugfs ABI is different).
+PRODUCT_PACKAGES += android.hardware.memtrack@1.0-service-mocha

@@ -6,8 +6,8 @@
 # distribution of this software and related documentation without an express
 # license agreement from NVIDIA CORPORATION is strictly prohibited.
 
-type config_cameras, domain;
-type config_cameras_exec, exec_type, file_type;
+type config_cameras, domain, coredomain;
+type config_cameras_exec, exec_type, file_type, system_file_type;
 
 init_daemon_domain(config_cameras)
 file_type_auto_trans(config_cameras, system_data_file, camera_config_file)

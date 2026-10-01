@@ -11,9 +11,14 @@ import init.tn8_common.rc
 import init.t124.rc
 import init.cal.rc
 import init.tn8.usb.rc
-import init.ray_touch.rc
 
 on post-fs-data
+    chown system system /sys/kernel/debug/nvmap/memtrack
+    chmod 0440 /sys/kernel/debug/nvmap/memtrack
+    # The stock ST HAL persists calibration through the image /persist link.
+    mkdir /data/misc/sensors 0770 system system
+    restorecon_recursive /data/misc/sensors
+
     chmod 0644 /sys/kernel/cluster/active
 
     chown system system /dev/sysmatdrv
@@ -21,6 +26,10 @@ on post-fs-data
     insmod /system/lib/modules/texfat.ko
 
 on init
+    mkdir /dev/socket/pdx 0755 root root
+    mkdir /dev/socket/pdx/system 0755 root root
+    mkdir /dev/socket/pdx/system/vr 0755 root root
+    mkdir /dev/socket/pdx/system/vr/display 0755 system graphics
     # Mount a tmpfs into /mnt/tmp for hosting nvram, phs shared memory
     mkdir /mnt/tmp 0770 system system
     mount tmpfs tmpfs /mnt/tmp mode=0775,gid=1003
@@ -47,7 +56,7 @@ on init
 
 on boot
     #change vm memory parameter
-    write /proc/sys/vm/lowmem_reserve_ratio 128 128 32
+    write /proc/sys/vm/lowmem_reserve_ratio "128 128 32"
 
 # brcm-uim-sysfs (BT/FM/ANT+)
 service uim /vendor/bin/brcm-uim-sysfs

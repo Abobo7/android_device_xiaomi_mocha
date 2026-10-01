@@ -14,8 +14,8 @@
 
 # wpalog is the extra log collected for wifi
 
-type wpalog, domain;
-type wpalog_exec, exec_type, file_type;
+type wpalog, domain, coredomain;
+type wpalog_exec, exec_type, file_type, system_file_type;
 
 init_daemon_domain(wpalog)
 set_prop(wpalog, system_prop)
