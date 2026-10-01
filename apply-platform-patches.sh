@@ -29,3 +29,5 @@ apply_project_patches "$source_root/hardware/broadcom/libbt" hardware_broadcom_l
 apply_project_patches "$source_root/packages/apps/Snap" packages_apps_Snap
 apply_project_patches "$source_root/external/skia" external_skia
 apply_project_patches "$source_root/frameworks/opt/net/wifi" frameworks_opt_net_wifi
+
+bash "$device_dir/prepare-webview.sh"

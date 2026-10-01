@@ -1,9 +1,21 @@
 # Platform compatibility for stock mocha blobs
 
+## Published baseline verification (2026-10-01)
+
+`BASELINES.json` records each patched platform repository's clean commit and
+the SHA-256 of each patch in application order. The publication check replayed
+these patches against an isolated Git index at each clean commit and verified
+the resulting source files against the working tree. This check does not alter
+platform source or substitute for the recorded runtime validation.
+
+Run `apply-platform-patches.sh` after repo sync. It also verifies and restores
+the validated WebView prebuilt via `prepare-webview.sh`. The original hardware
+blobs remain unchanged.
+
+
 Run `bash device/xiaomi/mocha/apply-platform-patches.sh` from the active LineageOS
 source tree before building. The script verifies each patch before applying
-it and recognizes patches that are already applied. The same set is
-used with the 16.0 tree.
+it and recognizes patches that are already applied. Use the patch set from the branch matching the Android source version.
 
 Bionic Fortify normally checks for O_TMPFILE when validating open flags. The
 mocha kernel exports older UAPI headers that omit that flag, so the guard

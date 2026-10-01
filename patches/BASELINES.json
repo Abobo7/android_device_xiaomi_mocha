@@ -1,0 +1,126 @@
+[
+  {
+    "project": "frameworks/native",
+    "base_commit": "38be48f36da1acd812670fbecb75bffca9b4cd98",
+    "patches": [
+      {
+        "path": "patches/frameworks_native/0001-restore-stock-graphicbuffer-abi.patch",
+        "sha256": "871d51ba995878e675b1296a8c826fae2dbe1c803acd9f71309e91094c59613b"
+      },
+      {
+        "path": "patches/frameworks_native/0002-force-client-composition-option.patch",
+        "sha256": "e5123ef8e72380f5bfdbc8687d9e58d9910a860fdec7e07ab8eb59a1cce624b8"
+      },
+      {
+        "path": "patches/frameworks_native/0003-export-legacy-fence-lifetime.patch",
+        "sha256": "da9f3303c26120b91852623538d102249222714237d6c7b3b4e958e7d53ca16a"
+      }
+    ]
+  },
+  {
+    "project": "bionic",
+    "base_commit": "b91dfc8b9dcb1ffbf9572fc0406878e599c45ccc",
+    "patches": [
+      {
+        "path": "patches/bionic/0001-fcntl-fortify-old-kernel-headers.patch",
+        "sha256": "f59756c5a1f47dfbd7b3bfe95201a6edf65a97084e5138bf4e313d1e52b2868e"
+      }
+    ]
+  },
+  {
+    "project": "system/core",
+    "base_commit": "976019d07ad1c007043b78450857f428a1440f06",
+    "patches": [
+      {
+        "path": "patches/system_core/0001-optional-legacy-fuse-daemon.patch",
+        "sha256": "888b72a315eb4235ac9d34cb5820c1ee07992beb893ebb2db651155cb3550413"
+      }
+    ]
+  },
+  {
+    "project": "frameworks/base",
+    "base_commit": "ea0de66d71ac88db42f26d9b63c9c1941aa097fc",
+    "patches": [
+      {
+        "path": "patches/frameworks_base/0001-allow-opting-out-of-early-egl-init.patch",
+        "sha256": "3f7c5e8c6586d28853cf1932fb0442b015057d562eb488cef215b3e708bd3566"
+      },
+      {
+        "path": "patches/frameworks_base/0002-legacy-egl-display-resilience.patch",
+        "sha256": "9a6cd63c6c419ccddeec7f0325a06cd357123517ca1df1ff22414f9eb4b4094f"
+      }
+    ]
+  },
+  {
+    "project": "hardware/interfaces",
+    "base_commit": "247f33da70920c5d79765faab67ee3191133723c",
+    "patches": [
+      {
+        "path": "patches/hardware_interfaces/0001-preserve-tegra-gralloc-handle-references.patch",
+        "sha256": "b584bf98eb4dd0c9c96a2d134307400cb7368be208501ee2a614788b6aabe45b"
+      },
+      {
+        "path": "patches/hardware_interfaces/0002-allow-legacy-camera-system-binder.patch",
+        "sha256": "8fa9d25c92d448f40eb6ab7a9c63020ce33c23e8066b4e47868e6652a209a4fc"
+      },
+      {
+        "path": "patches/hardware_interfaces/0003-legacy-factory-bluetooth-address.patch",
+        "sha256": "bda3ce0e94dcd9d47e3cab67a00c16031ad1fcc31113c12dd34b507b3e7f5496"
+      }
+    ]
+  },
+  {
+    "project": "hardware/nvidia/power",
+    "base_commit": "06b0ef51569566c0e82f9ae9afbcbcfdf0371989",
+    "patches": [
+      {
+        "path": "patches/hardware_nvidia_power/0001-android9-powerhal-compatibility.patch",
+        "sha256": "5bf1c96da2564429b49de821335e3c551fe62d551d10d49eeca0b0f3ecd1885a"
+      }
+    ]
+  },
+  {
+    "project": "hardware/broadcom/libbt",
+    "base_commit": "99728169788e8d6f66a7a45156657b151a0b2c63",
+    "patches": [
+      {
+        "path": "patches/hardware_broadcom_libbt/0001-restore-v4l2-transport.patch",
+        "sha256": "0cc11664325c8e5ebcd06a2f57e08d4466672aeee311f36b2a426e9143f35517"
+      }
+    ]
+  },
+  {
+    "project": "packages/apps/Snap",
+    "base_commit": "bfdb4700a532718f9f5848f462ee07d1819ad24f",
+    "patches": [
+      {
+        "path": "patches/packages_apps_Snap/0001-force-camera-release-on-module-switch.patch",
+        "sha256": "a59303e557b3a4ca79a325aa84f8b9cb6bcf2005e823c1613cebc8390f605c2a"
+      }
+    ]
+  },
+  {
+    "project": "external/skia",
+    "base_commit": "bfdc5ebd1697b06f1ececcaf9c748d00b738b2fa",
+    "patches": [
+      {
+        "path": "patches/external_skia/0001-preserve-external-textures-on-legacy-nvidia.patch",
+        "sha256": "bebfeb0d6240bb78e6edc19f3c4f548204809b30ebec09cc45f0f40e1b1001f2"
+      },
+      {
+        "path": "patches/external_skia/0002-key-program-binaries-by-shader-language.patch",
+        "sha256": "a75352a516a04956f17992ec01a87572fc99e08dd26222f0d6743a39ced7871f"
+      }
+    ]
+  },
+  {
+    "project": "frameworks/opt/net/wifi",
+    "base_commit": "934ca88f867996977ed25366f8abdc25584e46bb",
+    "patches": [
+      {
+        "path": "patches/frameworks_opt_net_wifi/0001-handle-interface-destruction-before-ip-client.patch",
+        "sha256": "8c64362545f2b4175e8f3c6e6bc272b5cb16996ec2c71f20bf0dca9a708331ed"
+      }
+    ]
+  }
+]

@@ -1,3 +1,31 @@
+# Xiaomi Mi Pad (mocha): Android 9 / LineageOS 16.0
+
+The validated Android 9 baseline includes USB mode switching, the netd
+direct-connect rule, codec seccomp compatibility, and the WebView renderer's
+trace_marker permission fix. The 2026-10-01 publication adds source/prebuilt
+reproduction files; it does not change the installed runtime implementation.
+
+## Rebuilding the validated branch
+
+Initialize the official LineageOS manifest on `lineage-16.0`, then install
+`manifests/mocha.xml` from this branch as `.repo/local_manifests/mocha.xml`
+before syncing. Do not add duplicate mocha entries or `device/nvidia/tegra-common`.
+The device, kernel, and vendor projects must all use `lineage-16.0`.
+
+Before building, run `bash device/xiaomi/mocha/apply-platform-patches.sh`.
+This verifies/applies the checked-in platform patches and restores the exact
+WebView prebuilt from `vendor/xiaomi/mocha/prebuilt/webview`.
+Use the pinned Linaro 4.9.4 toolchain for the kernel. Export `LINEAGE_BUILD=mocha`
+before sourcing `build/envsetup.sh`, run `breakfast mocha`, then build `bacon`.
+`MOCHA_ADB_PUBLIC_KEY` is optional and may point to the builder's own public key;
+no private key or device-specific authorization key is stored here.
+
+Platform changes are distributed as device-tree patches, not pushed to LineageOS
+upstream repositories. Patch baselines are recorded under `patches/`.
+Keep recovery and user data when installing a compatible update; no wipe is
+part of these source publication changes. Existing proprietary blob bytes are
+unchanged. Consult `patches/README.md` for the compatibility details.
+
 # Device configuration for XiaoMi MiPad Tablet
 
 ## Spec Sheet
